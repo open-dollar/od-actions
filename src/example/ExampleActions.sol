@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import {BasicActions} from '@opendollar/contracts/proxies/actions/BasicActions.sol';
 import {ODSafeManager} from '@opendollar/contracts/proxies/ODSafeManager.sol';
-import {Math} from '@opendollar/libraries/Math.sol';
 import {IExampleActions} from 'src/example/IExampleActions.sol';
 
 /**
@@ -12,8 +11,6 @@ import {IExampleActions} from 'src/example/IExampleActions.sol';
  * For minimum proxy-actions functions, inherit CommonActions
  */
 contract ExampleActions is BasicActions, IExampleActions {
-  using Math for uint256;
-
   /**
    * @dev example function that combines the logic of:
    * `BasicActions.openSAFE` and `BasicActions.lockTokenCollateral`

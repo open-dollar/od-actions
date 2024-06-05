@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import '@script/Registry.s.sol';
 import 'forge-std/Test.sol';
-import {Math} from '@opendollar/libraries/Math.sol';
+// import {CAMELOT_FACTORY, CAMELOT_OD_WETH_POOL} from '@script/Registry.s.sol';
 import {IAlgebraFactory} from '@algebra-core/interfaces/IAlgebraFactory.sol';
 import {IAlgebraPool} from '@algebra-core/interfaces/IAlgebraPool.sol';
 
