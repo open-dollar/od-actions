@@ -99,6 +99,20 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.9.6.tgz#2a880a24eb19b4f8b25adc2a5095f2aa27f39677"
   integrity sha512-xSmezSupL+y9VkHZJGDoCBpmnB2ogM13ccaYDWqJTfS3dbuHkgjuwDFUmaFauBCboQMGB/S5UqUl2y54X99BmA==
 
+"@paraswap/core@2.1.1":
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/@paraswap/core/-/core-2.1.1.tgz#666d356d834bc00102707272e694366f9975609a"
+  integrity sha512-8kI70kprLuRqye1kY7dd9UCHhCmLwDspTkZeHJcd42ImazPIomcR34NRV49A+Rl9oirHFvjx6xjljemkMcC20g==
+
+"@paraswap/sdk@^6.7.0":
+  version "6.7.0"
+  resolved "https://registry.yarnpkg.com/@paraswap/sdk/-/sdk-6.7.0.tgz#bd1cfddf51aa763714a2ad7f122df4be08e91bbe"
+  integrity sha512-cNM57jtgSvkjD0VAntNZRQ7urfTH1PQK/mIlEUOcrCxq3jrqK/nyQufGc1kxKptYyWtyK2a1xqK52j4i5jNuxg==
+  dependencies:
+    "@paraswap/core" "2.1.1"
+    bignumber.js "^9.0.2"
+    ts-essentials "^9.1.2"
+
 "@pnpm/config.env-replace@^1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@pnpm/config.env-replace/-/config.env-replace-1.1.0.tgz#ab29da53df41e8948a00f2433f085f54de8b3a4c"
@@ -269,6 +283,11 @@ balanced-match@^1.0.0:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-1.0.2.tgz#e83e3a7e3f300b34cb9d87f615fa0cbf357690ee"
   integrity sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==
+
+bignumber.js@^9.0.2:
+  version "9.1.2"
+  resolved "https://registry.yarnpkg.com/bignumber.js/-/bignumber.js-9.1.2.tgz#b7c4242259c008903b13707983b5f4bbd31eda0c"
+  integrity sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==
 
 brace-expansion@^1.1.7:
   version "1.1.11"
@@ -1675,6 +1694,11 @@ to-regex-range@^5.0.1:
   integrity sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==
   dependencies:
     is-number "^7.0.0"
+
+ts-essentials@^9.1.2:
+  version "9.4.2"
+  resolved "https://registry.yarnpkg.com/ts-essentials/-/ts-essentials-9.4.2.tgz#6d4bd23b46b61bf3e031816cc887e839eb62c33c"
+  integrity sha512-mB/cDhOvD7pg3YCLk2rOtejHjjdSi9in/IBYE13S+8WA5FBSraYf4V/ws55uvs0IvQ/l0wBOlXy5yBNZ9Bl8ZQ==
 
 tslib@2.4.0:
   version "2.4.0"
