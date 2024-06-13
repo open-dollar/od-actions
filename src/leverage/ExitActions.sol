@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import '@script/Registry.s.sol';
 import {SafeCast} from '@openzeppelin/utils/math/SafeCast.sol';
 import {BasicActions} from '@opendollar/contracts/proxies/actions/BasicActions.sol';
 import {ODSafeManager} from '@opendollar/contracts/proxies/ODSafeManager.sol';
