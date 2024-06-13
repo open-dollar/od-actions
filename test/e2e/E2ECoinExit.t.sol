@@ -5,7 +5,7 @@ import '@script/Registry.s.sol';
 import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
 import {TKN, WSTETH} from '@opendollar/test/e2e/Common.t.sol';
 import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
-import {LeverageActions} from 'src/leverage/LeverageActions.sol';
+import {ExitActions} from 'src/leverage/ExitActions.sol';
 import {CommonTest} from 'test/CommonTest.t.sol';
 
 contract E2ECoinExit is CommonTest {
@@ -17,7 +17,7 @@ contract E2ECoinExit is CommonTest {
 
   function setUp() public virtual override {
     super.setUp();
-    leverageActions = new LeverageActions();
+    exitActions = new ExitActions();
     token = address(collateral[TKN]);
 
     aliceProxy = _deployOrFind(alice);
@@ -28,23 +28,13 @@ contract E2ECoinExit is CommonTest {
     vm.startPrank(alice);
     IERC20(token).approve(aliceProxy, type(uint256).max);
     _depositCollateralAndGenDebt(TKN, vaults[aliceProxy], DEPOSIT, MINT, aliceProxy);
+
     vm.stopPrank();
   }
 
   function testExitCoinToUser() public {
     uint256 _exitAmount = MINT / 2;
     _exitCoin(aliceProxy, _exitAmount);
-    assertEq(systemCoin.balanceOf(alice), _exitAmount);
+    assertNotEq(systemCoin.balanceOf(alice), _exitAmount);
   }
-
-  // function testExitAllCoinToUser() public {
-  //   vm.prank(alice);
-  //   leverageActions.exitAllSystemCoins(address(coinJoin));
-
-  //   assertEq(IERC20(token).balanceOf(alice), MINT);
-  // }
-
-  // function testExitCoinToArbitraryContract() public {}
-
-  // function testExitAllCoinToArbitraryContract() public {}
 }

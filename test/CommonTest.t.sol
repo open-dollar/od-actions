@@ -8,7 +8,7 @@ import {ERC20ForTest} from '@opendollar/test/mocks/ERC20ForTest.sol';
 import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {IOracleRelayer} from '@opendollar/interfaces/IOracleRelayer.sol';
-import {LeverageActions} from 'src/leverage/LeverageActions.sol';
+import {ExitActions} from 'src/leverage/ExitActions.sol';
 
 contract CommonTest is Common {
   using Math for uint256;
@@ -17,7 +17,7 @@ contract CommonTest is Common {
   address public bobProxy;
   address public deployerProxy;
 
-  LeverageActions public leverageActions;
+  ExitActions public exitActions;
 
   mapping(address proxy => uint256 safeId) public vaults;
 
@@ -58,31 +58,31 @@ contract CommonTest is Common {
 
   function _exitCoin(address _proxy, uint256 _amount) internal {
     vm.startPrank(ODProxy(_proxy).OWNER());
-    bytes memory _payload = abi.encodeWithSelector(leverageActions.exitSystemCoins.selector, address(coinJoin), _amount);
-    ODProxy(_proxy).execute(address(leverageActions), _payload);
+    bytes memory _payload = abi.encodeWithSelector(exitActions.exitSystemCoins.selector, address(coinJoin), _amount);
+    ODProxy(_proxy).execute(address(exitActions), _payload);
     vm.stopPrank();
   }
 
   function _exitAllCoin(address _proxy) internal {
     vm.startPrank(ODProxy(_proxy).OWNER());
-    bytes memory _payload = abi.encodeWithSelector(leverageActions.exitAllSystemCoins.selector, address(coinJoin));
-    ODProxy(_proxy).execute(address(leverageActions), _payload);
+    bytes memory _payload = abi.encodeWithSelector(exitActions.exitAllSystemCoins.selector, address(coinJoin));
+    ODProxy(_proxy).execute(address(exitActions), _payload);
     vm.stopPrank();
   }
 
   function _exitCoinToAccount(address _proxy, address _contract, uint256 _amount) internal {
     vm.startPrank(ODProxy(_proxy).OWNER());
     bytes memory _payload =
-      abi.encodeWithSelector(leverageActions.exitSystemCoinsToAccount.selector, _contract, address(coinJoin), _amount);
-    ODProxy(_proxy).execute(address(leverageActions), _payload);
+      abi.encodeWithSelector(exitActions.exitSystemCoinsToAccount.selector, _contract, address(coinJoin), _amount);
+    ODProxy(_proxy).execute(address(exitActions), _payload);
     vm.stopPrank();
   }
 
   function _exitAllCoinToAccount(address _proxy, address _contract) internal {
     vm.startPrank(ODProxy(_proxy).OWNER());
     bytes memory _payload =
-      abi.encodeWithSelector(leverageActions.exitAllSystemCoinsToAccount.selector, _contract, address(coinJoin));
-    ODProxy(_proxy).execute(address(leverageActions), _payload);
+      abi.encodeWithSelector(exitActions.exitAllSystemCoinsToAccount.selector, _contract, address(coinJoin));
+    ODProxy(_proxy).execute(address(exitActions), _payload);
     vm.stopPrank();
   }
 }

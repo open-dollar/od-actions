@@ -8,7 +8,7 @@ import {ICoinJoin} from '@opendollar/interfaces/utils/ICoinJoin.sol';
 import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {Math, RAY} from '@opendollar/libraries/Math.sol';
 
-contract LeverageActions is BasicActions {
+contract ExitActions is BasicActions {
   /// @dev exits `_coinsToExit` system coins `_contract`
   function exitSystemCoinsToAccount(address _contract, address _coinJoin, uint256 _coinsToExit) external delegateCall {
     _exitSystemCoinsToAccount(_contract, _coinJoin, _coinsToExit);
