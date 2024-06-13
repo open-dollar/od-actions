@@ -12,7 +12,7 @@ contract E2ECoinExit is CommonTest {
   uint256 public constant DEPOSIT = 10_000 ether;
   uint256 public constant MINT = DEPOSIT * 2 / 3;
 
-  address public arbitraryContract;
+  address public arbitraryContract = address(0x1234abcd);
   address public token;
 
   function setUp() public virtual override {
@@ -25,16 +25,15 @@ contract E2ECoinExit is CommonTest {
 
     MintableERC20(token).mint(alice, DEPOSIT);
 
-    vm.startPrank(alice);
+    vm.prank(alice);
     IERC20(token).approve(aliceProxy, type(uint256).max);
-    _depositCollateralAndGenDebt(TKN, vaults[aliceProxy], DEPOSIT, MINT, aliceProxy);
-
-    vm.stopPrank();
   }
 
-  function testExitCoinToUser() public {
-    uint256 _exitAmount = MINT / 2;
-    _exitCoin(aliceProxy, _exitAmount);
-    assertNotEq(systemCoin.balanceOf(alice), _exitAmount);
+  function testLockAndGenDebtToAccount() public {
+    vm.prank(alice);
+    _depositCollateralAndGenDebtToAccount(arbitraryContract, TKN, vaults[aliceProxy], DEPOSIT, MINT, aliceProxy);
+
+    assertEq(systemCoin.balanceOf(arbitraryContract), MINT);
+    assertEq(systemCoin.balanceOf(alice), 0);
   }
 }

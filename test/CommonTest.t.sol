@@ -56,6 +56,29 @@ contract CommonTest is Common {
     vm.stopPrank();
   }
 
+  function _depositCollateralAndGenDebtToAccount(
+    address _account,
+    bytes32 _cType,
+    uint256 _safeId,
+    uint256 _collatAmount,
+    uint256 _deltaWad,
+    address _proxy
+  ) internal {
+    vm.startPrank(ODProxy(_proxy).OWNER());
+    bytes memory _payload = abi.encodeWithSelector(
+      exitActions.lockTokenCollateralAndGenerateDebtToAccount.selector,
+      _account,
+      address(safeManager),
+      address(collateralJoin[_cType]),
+      address(coinJoin),
+      _safeId,
+      _collatAmount,
+      _deltaWad
+    );
+    ODProxy(_proxy).execute(address(exitActions), _payload);
+    vm.stopPrank();
+  }
+
   function _exitCoin(address _proxy, uint256 _amount) internal {
     vm.startPrank(ODProxy(_proxy).OWNER());
     bytes memory _payload = abi.encodeWithSelector(exitActions.exitSystemCoins.selector, address(coinJoin), _amount);
