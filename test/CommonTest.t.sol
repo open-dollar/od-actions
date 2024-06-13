@@ -18,12 +18,12 @@ contract CommonTest is Common {
 
   mapping(address proxy => uint256 safeId) public vaults;
 
-  function _deployOrFind(address _owner) internal returns (address) {
-    address proxy = vault721.getProxy(_owner);
-    if (proxy == address(0)) {
+  function _deployOrFind(address _owner) internal returns (address _proxy) {
+    _proxy = vault721.getProxy(_owner);
+    if (_proxy == address(0)) {
       return address(vault721.build(_owner));
     } else {
-      return proxy;
+      return _proxy;
     }
   }
 

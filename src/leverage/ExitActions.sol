@@ -89,9 +89,9 @@ contract ExitActions is BasicActions {
     address _safeEngine = ODSafeManager(_manager).safeEngine();
     ODSafeManager.SAFEData memory _safeInfo = ODSafeManager(_manager).safeData(_safeId);
 
-    int256 deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
+    int256 _deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
     // generates debt in the SAFE
-    _modifySAFECollateralization(_manager, _safeId, 0, deltaDebt, false);
+    _modifySAFECollateralization(_manager, _safeId, 0, _deltaDebt, false);
     // exits and transfers COIN amount to address
     _collectAndExitCoinsToAccount(_contract, _manager, _coinJoin, _safeId, _deltaWad);
   }
@@ -101,9 +101,9 @@ contract ExitActions is BasicActions {
     address _safeEngine = ODSafeManager(_manager).safeEngine();
     ODSafeManager.SAFEData memory _safeInfo = ODSafeManager(_manager).safeData(_safeId);
 
-    int256 deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
+    int256 _deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
     // generates debt in the SAFE
-    _modifySAFECollateralization(_manager, _safeId, 0, deltaDebt, false);
+    _modifySAFECollateralization(_manager, _safeId, 0, _deltaDebt, false);
     // exits and transfers COIN amount to address
     _collectAndTransferToProxy(_manager, _coinJoin, _safeId, _deltaWad);
   }
@@ -113,9 +113,9 @@ contract ExitActions is BasicActions {
     address _safeEngine = ODSafeManager(_manager).safeEngine();
     ODSafeManager.SAFEData memory _safeInfo = ODSafeManager(_manager).safeData(_safeId);
 
-    int256 deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
+    int256 _deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
     // generates debt in the SAFE
-    _modifySAFECollateralization(_manager, _safeId, 0, deltaDebt, false);
+    _modifySAFECollateralization(_manager, _safeId, 0, _deltaDebt, false);
     // moves the COIN amount to proxy's address
     _transferInternalCoins(_manager, _safeId, address(this), _deltaWad * RAY);
   }
@@ -135,9 +135,9 @@ contract ExitActions is BasicActions {
     // takes token amount from user's wallet and joins into the safeEngine
     _joinCollateral(_collateralJoin, _safeInfo.safeHandler, _collateralAmount);
 
-    int256 deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
+    int256 _deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
     // locks token amount into the SAFE and generates debt
-    _modifySAFECollateralization(_manager, _safeId, _collateralAmount.toInt(), deltaDebt, false);
+    _modifySAFECollateralization(_manager, _safeId, _collateralAmount.toInt(), _deltaDebt, false);
     // exits and transfers COIN amount to address
     _collectAndExitCoinsToAccount(_contract, _manager, _coinJoin, _safeId, _deltaWad);
   }

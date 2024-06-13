@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import '@script/Registry.s.sol';
 import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
 import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
 import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
