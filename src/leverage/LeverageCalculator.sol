@@ -33,7 +33,9 @@ contract LeverageCalculator {
   }
 
   /// @dev calculate max loop/flashloan leverage based on initial locked collateral
-  function calculateMaxLeverage(uint256 _safeId) external returns (uint256 _leverage) {}
+  function calculateMultipleLeverage(uint256 _safeId) external returns (uint256 _leverage) {
+    return _safeId;
+  }
 
   /// @return _internalDebt internal account of COIN for an account (internal)
   function getCoinBalance(address _proxy) public view returns (uint256 _internalDebt) {

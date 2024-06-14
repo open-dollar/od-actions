@@ -10,6 +10,13 @@ import {LeverageCalculator} from 'src/leverage/LeverageCalculator.sol';
 import {CommonTest} from 'test/CommonTest.t.sol';
 
 contract E2ELeverageCalculator is CommonTest {
+  address public constant LEVERAGE_HANDLER = address(0x1111);
+
+  function setUp() public virtual override {
+    super.setUp();
+    MintableERC20(token).mint(address(this), DEPOSIT);
+  }
+
   function testLockCollateral() public {
     _lockCollateral(TKN, vaults[aliceProxy], DEPOSIT, aliceProxy);
     (uint256 _collateral,) = leverageCalculator.getNFVLockedAndDebt(TKN, aliceNFV.safeHandler);
@@ -49,5 +56,23 @@ contract E2ELeverageCalculator is CommonTest {
     uint256 _internalDebt = leverageCalculator.getCoinBalance(aliceProxy);
     assertEq(_internalDebt, _debt / 2);
     assertEq(systemCoin.balanceOf(aliceProxy), MINT / 2);
+  }
+
+  function testCalcSingleSwap() public {
+    _lockCollateral(TKN, vaults[aliceProxy], DEPOSIT, aliceProxy);
+    uint256 _leverageAmount = leverageCalculator.calculateSingleLeverage(vaults[aliceProxy]);
+    _genDebtToAccount(LEVERAGE_HANDLER, vaults[aliceProxy], _leverageAmount, aliceProxy);
+
+    vm.startPrank(LEVERAGE_HANDLER);
+    IERC20(token).approve(address(this), type(uint256).max);
+    _simpleSwap(_leverageAmount);
+    _lockCollateral(TKN, vaults[aliceProxy], _leverageAmount, aliceProxy);
+    vm.stopPrank();
+  }
+
+  /// @dev to simulate swaps in tests
+  function _simpleSwap(uint256 _amount) internal {
+    systemCoin.transferFrom(msg.sender, address(this), _amount);
+    IERC20(token).transferFrom(address(this), msg.sender, _amount);
   }
 }
