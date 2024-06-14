@@ -4,9 +4,11 @@ pragma solidity 0.8.20;
 import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {IODSafeManager} from '@opendollar/interfaces/proxies/IODSafeManager.sol';
-import {RAY} from '@opendollar/libraries/Math.sol';
+import {Math, RAY} from '@opendollar/libraries/Math.sol';
 
 contract LeverageCalculator {
+  using Math for uint256;
+
   IVault721 public immutable VAULT721;
   ISAFEEngine public immutable SAFEENGINE;
 
@@ -17,16 +19,21 @@ contract LeverageCalculator {
 
   /// @dev calculate max single-swap leverage based on initial locked collateral
   function calculateSingleLeverage(uint256 _safeId) external returns (uint256 _leverage) {
-    return 1;
+    (bytes32 _cType, address _safeHandler) = getNFVIds(_safeId);
+    (uint256 _collateral, uint256 _debt) = getNFVLockedAndDebt(_cType, _safeHandler);
+    (uint256 _accumulatedRate, uint256 _safetyPrice, uint256 _liquidationPrice) = getCData(_cType);
+
+    uint256 _collateralXliquidationPrice = _collateral.wmul(_liquidationPrice);
+    uint256 _maxSafetyDebt =
+      (_collateralXliquidationPrice + _collateralXliquidationPrice.wdiv(_safetyPrice)).wdiv(_accumulatedRate);
+
+    if (_maxSafetyDebt > _debt) {
+      _leverage = _maxSafetyDebt - _debt;
+    }
   }
 
   /// @dev calculate max loop/flashloan leverage based on initial locked collateral
-  function calculateMaxLeverage(uint256 _safeId) external returns (uint256 _leverage) {
-    (bytes32 _cType, address _safeHandler) = getNFVIds(_safeId);
-    (uint256 _collateral, uint256 _debt) = getNFVLockedAndDebt(_cType, _safeHandler);
-    (uint256 _accumulatedRate, uint256 _safetyPrice) = getCData(_cType);
-    // TODO use safetyRatio to calculate max leverage position
-  }
+  function calculateMaxLeverage(uint256 _safeId) external returns (uint256 _leverage) {}
 
   /// @return _internalDebt internal account of COIN for an account (internal)
   function getCoinBalance(address _proxy) public view returns (uint256 _internalDebt) {
@@ -51,9 +58,14 @@ contract LeverageCalculator {
   }
 
   /// @dev get accumulated rate and safety price for a cType
-  function getCData(bytes32 _cType) public view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
+  function getCData(bytes32 _cType)
+    public
+    view
+    returns (uint256 _accumulatedRate, uint256 _safetyPrice, uint256 _liquidationPrice)
+  {
     ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = SAFEENGINE.cData(_cType);
     _accumulatedRate = _safeEngCData.accumulatedRate;
     _safetyPrice = _safeEngCData.safetyPrice;
+    _liquidationPrice = _safeEngCData.liquidationPrice;
   }
 }
