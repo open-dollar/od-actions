@@ -1,22 +1,51 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import {Common} from '@opendollar/test/e2e/Common.t.sol';
+import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
+import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
+import {Common, TKN} from '@opendollar/test/e2e/Common.t.sol';
 import {Math} from '@opendollar/libraries/Math.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
+import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {ExitActions} from 'src/leverage/ExitActions.sol';
+import {LeverageCalculator} from 'src/leverage/LeverageCalculator.sol';
 
 contract CommonTest is Common {
   using Math for uint256;
+
+  uint256 public constant DEPOSIT = 10_000 ether;
+  uint256 public constant MINT = DEPOSIT * 2 / 3;
+
+  address public token;
 
   address public aliceProxy;
   address public bobProxy;
   address public deployerProxy;
 
+  IVault721.NFVState public aliceNFV;
+
   ExitActions public exitActions;
+  LeverageCalculator public leverageCalculator;
 
   mapping(address proxy => uint256 safeId) public vaults;
+
+  function setUp() public virtual override {
+    super.setUp();
+    exitActions = new ExitActions();
+    leverageCalculator = new LeverageCalculator(address(vault721));
+    token = address(collateral[TKN]);
+
+    aliceProxy = _deployOrFind(alice);
+    _openSafe(aliceProxy, TKN);
+
+    MintableERC20(token).mint(alice, DEPOSIT);
+
+    vm.prank(alice);
+    IERC20(token).approve(aliceProxy, type(uint256).max);
+
+    aliceNFV = vault721.getNfvState(vaults[aliceProxy]);
+  }
 
   function _deployOrFind(address _owner) internal returns (address _proxy) {
     _proxy = vault721.getProxy(_owner);
