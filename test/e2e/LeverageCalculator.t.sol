@@ -24,6 +24,7 @@ contract E2ELeverageCalculator is CommonTest {
   }
 
   function testLockCollateral() public {
+    /// @notice collateral locked
     _lockCollateral(TKN, vaults[aliceProxy], DEPOSIT, aliceProxy);
     (uint256 _collateral,) = leverageCalculator.getNFVLockedAndDebt(TKN, aliceNFV.safeHandler);
     assertEq(_collateral, DEPOSIT);
@@ -64,8 +65,11 @@ contract E2ELeverageCalculator is CommonTest {
     assertEq(systemCoin.balanceOf(aliceProxy), MINT / 2);
   }
 
+  /// @notice leverageAmount used to make swap and leverage safe
   function testCalcSingleSwap() public {
     _lockCollateral(TKN, vaults[aliceProxy], DEPOSIT, aliceProxy);
+    (uint256 _initCollateral,) = leverageCalculator.getNFVLockedAndDebt(TKN, aliceNFV.safeHandler);
+
     uint256 _leverageAmount = leverageCalculator.calculateSingleLeverage(vaults[aliceProxy]);
     _genDebtToAccount(LEVERAGE_HANDLER, vaults[aliceProxy], _leverageAmount, aliceProxy);
     assertEq(systemCoin.balanceOf(LEVERAGE_HANDLER), _leverageAmount);
@@ -79,10 +83,42 @@ contract E2ELeverageCalculator is CommonTest {
 
     vm.prank(LEVERAGE_HANDLER);
     _lockCollateral(TKN, vaults[aliceProxy], _leverageAmount, leverageHandlerProxy);
+    (uint256 _finalCollateral,) = leverageCalculator.getNFVLockedAndDebt(TKN, aliceNFV.safeHandler);
+
+    /// @dev this maths because collateral and debt tokens are equal: 1-to-1
+    assertEq(_initCollateral + _leverageAmount, _finalCollateral);
+  }
+
+  /// @notice (leverageAmount - initial debt) used to make swap and leverage safe
+  function testCalcSingleSwapWithPreviousDebtMinted() public {
+    _lockCollateral(TKN, vaults[aliceProxy], DEPOSIT, aliceProxy);
+    (uint256 _initCollateral,) = leverageCalculator.getNFVLockedAndDebt(TKN, aliceNFV.safeHandler);
+    uint256 _leverageAmount = leverageCalculator.calculateSingleLeverage(vaults[aliceProxy]);
+
+    _genDebtToAccount(address(0x9999), vaults[aliceProxy], MINT / 2, aliceProxy);
+    uint256 _newLeverageAmount = leverageCalculator.calculateSingleLeverage(vaults[aliceProxy]);
+    assertEq(_newLeverageAmount, _leverageAmount - MINT / 2);
+
+    _genDebtToAccount(LEVERAGE_HANDLER, vaults[aliceProxy], _newLeverageAmount, aliceProxy);
+    assertEq(systemCoin.balanceOf(LEVERAGE_HANDLER), _newLeverageAmount);
+
+    vm.prank(LEVERAGE_HANDLER);
+    _swapIn(LEVERAGE_HANDLER, _newLeverageAmount);
+    _swapOut(LEVERAGE_HANDLER);
+
+    assertEq(systemCoin.balanceOf(LEVERAGE_HANDLER), 0);
+    assertEq(IERC20(token).balanceOf(LEVERAGE_HANDLER), _newLeverageAmount);
+
+    vm.prank(LEVERAGE_HANDLER);
+    _lockCollateral(TKN, vaults[aliceProxy], _newLeverageAmount, leverageHandlerProxy);
+    (uint256 _finalCollateral,) = leverageCalculator.getNFVLockedAndDebt(TKN, aliceNFV.safeHandler);
+
+    /// @dev this maths because collateral and debt tokens are equal: 1-to-1
+    assertEq(_initCollateral + _newLeverageAmount, _finalCollateral);
   }
 
   /// SIMULATION FUNCTIONS
-  mapping(address => uint256) swapIn;
+  mapping(address => uint256) public swapIn;
 
   /**
    * @dev to simulate swaps in tests

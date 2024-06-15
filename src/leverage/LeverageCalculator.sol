@@ -18,7 +18,7 @@ contract LeverageCalculator {
   }
 
   /// @dev calculate max single-swap leverage based on initial locked collateral
-  function calculateSingleLeverage(uint256 _safeId) external view returns (uint256 _leverage) {
+  function calculateSingleLeverage(uint256 _safeId) public view returns (uint256 _leverage) {
     (bytes32 _cType, address _safeHandler) = getNFVIds(_safeId);
     (uint256 _collateral, uint256 _debt) = getNFVLockedAndDebt(_cType, _safeHandler);
     (uint256 _accumulatedRate, uint256 _safetyPrice) = getCData(_cType);
@@ -30,8 +30,23 @@ contract LeverageCalculator {
     }
   }
 
-  /// @dev calculate max loop/flashloan leverage based on initial locked collateral
+  /// @dev calculate max loop-swap leverage based on initial locked collateral
   function calculateMultipleLeverage(uint256 _safeId) external view returns (uint256 _leverage) {
+    uint256 _accumulator;
+    uint256 _debtIterator;
+
+    _debtIterator = calculateSingleLeverage(_safeId);
+
+    while (_debtIterator > 200 ether) {
+      _accumulator += _debtIterator;
+      // TODO: recalculate collateral or execute leverage swap
+      _debtIterator = calculateSingleLeverage(_safeId);
+    }
+  }
+
+  /// @dev calculate max flashloan leverage based on initial locked collateral
+  function calculateFlashLeverage(uint256 _safeId) external view returns (uint256 _leverage) {
+    // TODO: calculate max leverage
     return _safeId;
   }
 
