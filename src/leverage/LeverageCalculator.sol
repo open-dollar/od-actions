@@ -18,14 +18,12 @@ contract LeverageCalculator {
   }
 
   /// @dev calculate max single-swap leverage based on initial locked collateral
-  function calculateSingleLeverage(uint256 _safeId) external returns (uint256 _leverage) {
+  function calculateSingleLeverage(uint256 _safeId) external view returns (uint256 _leverage) {
     (bytes32 _cType, address _safeHandler) = getNFVIds(_safeId);
     (uint256 _collateral, uint256 _debt) = getNFVLockedAndDebt(_cType, _safeHandler);
-    (uint256 _accumulatedRate, uint256 _safetyPrice, uint256 _liquidationPrice) = getCData(_cType);
+    (uint256 _accumulatedRate, uint256 _safetyPrice) = getCData(_cType);
 
-    uint256 _collateralXliquidationPrice = _collateral.wmul(_liquidationPrice);
-    uint256 _maxSafetyDebt =
-      (_collateralXliquidationPrice + _collateralXliquidationPrice.wdiv(_safetyPrice)).wdiv(_accumulatedRate);
+    uint256 _maxSafetyDebt = _collateral.wmul(_safetyPrice).wdiv(_accumulatedRate);
 
     if (_maxSafetyDebt > _debt) {
       _leverage = _maxSafetyDebt - _debt;
@@ -33,7 +31,7 @@ contract LeverageCalculator {
   }
 
   /// @dev calculate max loop/flashloan leverage based on initial locked collateral
-  function calculateMultipleLeverage(uint256 _safeId) external returns (uint256 _leverage) {
+  function calculateMultipleLeverage(uint256 _safeId) external view returns (uint256 _leverage) {
     return _safeId;
   }
 
@@ -60,14 +58,9 @@ contract LeverageCalculator {
   }
 
   /// @dev get accumulated rate and safety price for a cType
-  function getCData(bytes32 _cType)
-    public
-    view
-    returns (uint256 _accumulatedRate, uint256 _safetyPrice, uint256 _liquidationPrice)
-  {
+  function getCData(bytes32 _cType) public view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
     ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = SAFEENGINE.cData(_cType);
     _accumulatedRate = _safeEngCData.accumulatedRate;
     _safetyPrice = _safeEngCData.safetyPrice;
-    _liquidationPrice = _safeEngCData.liquidationPrice;
   }
 }

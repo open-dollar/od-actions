@@ -80,6 +80,7 @@ contract CommonTest is Common {
       exitActions.generateDebtToAccount.selector, _contract, address(safeManager), address(coinJoin), _safeId, _deltaWad
     );
     ODProxy(_proxy).execute(address(exitActions), _payload);
+    vm.stopPrank();
   }
 
   function _genDebtToProxy(uint256 _safeId, uint256 _deltaWad, address _proxy) internal {
@@ -88,6 +89,7 @@ contract CommonTest is Common {
       exitActions.generateDebtToProxy.selector, address(safeManager), address(coinJoin), _safeId, _deltaWad
     );
     ODProxy(_proxy).execute(address(exitActions), _payload);
+    vm.stopPrank();
   }
 
   function _genInternalDebt(uint256 _safeId, uint256 _deltaWad, address _proxy) internal {
@@ -95,6 +97,7 @@ contract CommonTest is Common {
     bytes memory _payload =
       abi.encodeWithSelector(exitActions.generateInternalDebt.selector, address(safeManager), _safeId, _deltaWad);
     ODProxy(_proxy).execute(address(exitActions), _payload);
+    vm.stopPrank();
   }
 
   function _depositCollateralAndGenDebt(

@@ -3,18 +3,24 @@ pragma solidity 0.8.20;
 
 import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
 import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
-import {RAY} from '@opendollar/libraries/Math.sol';
 import {TKN} from '@opendollar/test/e2e/Common.t.sol';
-import {ExitActions} from 'src/leverage/ExitActions.sol';
-import {LeverageCalculator} from 'src/leverage/LeverageCalculator.sol';
 import {CommonTest} from 'test/CommonTest.t.sol';
 
 contract E2ELeverageCalculator is CommonTest {
   address public constant LEVERAGE_HANDLER = address(0x1111);
+  address public leverageHandlerProxy;
 
   function setUp() public virtual override {
     super.setUp();
     MintableERC20(token).mint(address(this), DEPOSIT);
+
+    leverageHandlerProxy = _deployOrFind(LEVERAGE_HANDLER);
+
+    vm.prank(LEVERAGE_HANDLER);
+    IERC20(token).approve(leverageHandlerProxy, type(uint256).max);
+
+    vm.prank(aliceProxy);
+    safeManager.allowSAFE(vaults[aliceProxy], leverageHandlerProxy, true);
   }
 
   function testLockCollateral() public {
@@ -62,17 +68,31 @@ contract E2ELeverageCalculator is CommonTest {
     _lockCollateral(TKN, vaults[aliceProxy], DEPOSIT, aliceProxy);
     uint256 _leverageAmount = leverageCalculator.calculateSingleLeverage(vaults[aliceProxy]);
     _genDebtToAccount(LEVERAGE_HANDLER, vaults[aliceProxy], _leverageAmount, aliceProxy);
+    assertEq(systemCoin.balanceOf(LEVERAGE_HANDLER), _leverageAmount);
 
-    vm.startPrank(LEVERAGE_HANDLER);
-    IERC20(token).approve(address(this), type(uint256).max);
-    _simpleSwap(_leverageAmount);
-    _lockCollateral(TKN, vaults[aliceProxy], _leverageAmount, aliceProxy);
-    vm.stopPrank();
+    vm.prank(LEVERAGE_HANDLER);
+    _swapIn(LEVERAGE_HANDLER, _leverageAmount);
+    _swapOut(LEVERAGE_HANDLER);
+
+    assertEq(systemCoin.balanceOf(LEVERAGE_HANDLER), 0);
+    assertEq(IERC20(token).balanceOf(LEVERAGE_HANDLER), _leverageAmount);
+
+    vm.prank(LEVERAGE_HANDLER);
+    _lockCollateral(TKN, vaults[aliceProxy], _leverageAmount, leverageHandlerProxy);
   }
 
-  /// @dev to simulate swaps in tests
-  function _simpleSwap(uint256 _amount) internal {
-    systemCoin.transferFrom(msg.sender, address(this), _amount);
-    IERC20(token).transferFrom(address(this), msg.sender, _amount);
+  /// SIMULATION FUNCTIONS
+  mapping(address => uint256) swapIn;
+
+  /**
+   * @dev to simulate swaps in tests
+   */
+  function _swapIn(address _sender, uint256 _amount) internal {
+    require(systemCoin.transfer(address(this), _amount), 'SwapInFail');
+    swapIn[_sender] = _amount;
+  }
+
+  function _swapOut(address _receiver) internal {
+    IERC20(token).transfer(_receiver, swapIn[_receiver]);
   }
 }
