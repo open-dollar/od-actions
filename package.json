@@ -27,7 +27,8 @@
   "dependencies": {
     "@opendollar/contracts": "0.0.0-e31c2151",
     "@openzeppelin/contracts": "4.9.6",
-    "@paraswap/sdk": "^6.7.0"
+    "@paraswap/sdk": "^6.7.0",
+    "@openzeppelin-contracts-3.4.2-solc-0.7": "yarn:@openzeppelin/contracts@^3.4.2"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

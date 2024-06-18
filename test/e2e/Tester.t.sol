@@ -6,7 +6,7 @@ import 'lib/forge-std/src/Test.sol';
 // import {} from '@paraswapV5/';
 
 contract Tester is Test {
-  function testTrue() public {
+  function testTrue() public pure {
     assertTrue(true);
   }
 }
