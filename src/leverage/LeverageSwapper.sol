@@ -6,5 +6,11 @@ import {PARASWAP_AUGUSTUS_SWAPPER} from '@script/ParaswapRegistry.s.sol';
 import {IParaswap} from 'src/leverage/interfaces/augustusV5/IParaswap.sol';
 
 contract LeverageSwapper {
-  IParaswap public constant paraswap = IParaswap(PARASWAP_AUGUSTUS_SWAPPER);
+  IParaswap public immutable PARASWAP_V5 = IParaswap(PARASWAP_AUGUSTUS_SWAPPER);
+
+  constructor(address _paraswapV5) {
+    PARASWAP_V5 = IParaswap(_paraswapV5);
+  }
+
+  function createOrder() public {}
 }
