@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.20;
+pragma solidity 0.7.5;
+pragma abicoder v2;
 
 contract LeverageSwapper {
-// Todo create and send order to PARASWAP_AUGUSTUS_RFQ
+// IParaswap public constant paraswap = IParaswap(PARASWAP_AUGUSTUS_SWAPPER);
 }
