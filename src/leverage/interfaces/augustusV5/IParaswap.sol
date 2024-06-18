@@ -2,9 +2,10 @@
 pragma solidity 0.7.5;
 pragma abicoder v2;
 
-import './lib/Utils.sol';
-import './lib/UtilsNFT.sol';
-import './lib/augustus-rfq/IAugustusRFQ.sol';
+import {IERC20} from '@openzeppelin-sol7/token/ERC20/IERC20.sol';
+import {Utils} from './lib/Utils.sol';
+import {UtilsNFT} from './lib/UtilsNFT.sol';
+import {IAugustusRFQ} from './lib/augustus-rfq/IAugustusRFQ.sol';
 
 interface IParaswap {
   event SwappedV3(
