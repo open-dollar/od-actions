@@ -1,5 +1,7 @@
 @aave-core-v3/=lib/aave-debt-swap/lib/aave-v3-core/
+@aave-address-book/=lib/aave-debt-swap/lib/aave-address-book/src/
 @aave-debt-swap/=lib/aave-debt-swap/src/contracts/
+@aave-debt-swap-test/=lib/aave-debt-swap/src/tests/
 @openzeppelin/=node_modules/@openzeppelin/contracts/
 @openzeppelin-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 @openzeppelin-sol7/=node_modules/@openzeppelin-contracts-3.4.2-solc-0.7/

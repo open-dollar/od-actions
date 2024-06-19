@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {RAY} from '@opendollar/libraries/Math.sol';
 import {TKN} from '@opendollar/test/e2e/Common.t.sol';
-import {CommonTest} from 'test/CommonTest.t.sol';
+import {CommonTest} from 'test/e2e/common/CommonTest.t.sol';
 
 contract E2ECoinExit is CommonTest {
   address public arbitraryContract = address(0x1234abcd);

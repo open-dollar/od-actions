@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
 import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
 import {TKN} from '@opendollar/test/e2e/Common.t.sol';
-import {CommonTest} from 'test/CommonTest.t.sol';
+import {CommonTest} from 'test/e2e/common/CommonTest.t.sol';
 
 contract E2ELeverageCalculator is CommonTest {
   address public constant LEVERAGE_HANDLER = address(0x1111);
