@@ -1,8 +1,11 @@
+@aave-core-v3/=lib/aave-debt-swap/lib/aave-v3-core/
+@aave-debt-swap/=lib/aave-debt-swap/src/contracts/
 @openzeppelin/=node_modules/@openzeppelin/contracts/
 @openzeppelin-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 @openzeppelin-sol7/=node_modules/@openzeppelin-contracts-3.4.2-solc-0.7/
 @openzeppelin-upgradeable/=node_modules/@openzeppelin/
 @defi-wonderland/solidity-utils/=node_modules/@defi-wonderland/solidity-utils/solidity/
+solidity-utils/=lib/aave-debt-swap/lib/solidity-utils/src/
 
 @opendollar/contracts/=node_modules/@opendollar/contracts/src/contracts/
 @opendollar/interfaces/=node_modules/@opendollar/contracts/src/interfaces/
