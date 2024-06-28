@@ -5,20 +5,16 @@ import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/Pe
 import {SafeERC20} from '@aave-core-v3/contracts/dependencies/openzeppelin/contracts/SafeERC20.sol';
 import {IERC20Detailed} from '@aave-core-v3/contracts/dependencies/openzeppelin/contracts/IERC20Detailed.sol';
 import {IPriceOracleGetter} from '@aave-core-v3/contracts/interfaces/IPriceOracleGetter.sol';
-// import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
-// import {DataTypes} from '@aave-core-v3/contracts/protocol/libraries/types/DataTypes.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
-// import {BaseParaSwapAdapter} from '@aave-debt-swap/base/BaseParaSwapAdapter.sol';
-// import {BaseParaSwapSellAdapter} from '@aave-debt-swap/base/BaseParaSwapSellAdapter.sol';
+import {BytesLib} from 'src/library/BytesLib.sol';
 
 interface IParaswapSellAdapter {
   struct SellParams {
     uint256 offset;
-    bytes paraswapData;
+    bytes swapCalldata;
     address fromToken;
     address toToken;
     uint256 sellAmount;
-    uint256 minReceiveAmount;
   }
 
   /**
@@ -30,15 +26,14 @@ interface IParaswapSellAdapter {
    */
   event Swapped(address indexed fromAsset, address indexed toAsset, uint256 fromAmount, uint256 receivedAmount);
 
-  // function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
-  function sellOnParaSwap(
-    uint256 _offset,
-    bytes calldata _swapCalldata,
-    IERC20Detailed _fromToken,
-    IERC20Detailed _toToken,
-    uint256 _sellAmount,
-    uint256 _minReceiveAmount
-  ) external returns (uint256 _amountReceived);
+  function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
+  // function sellOnParaSwap(
+  //   uint256 _offset,
+  //   bytes calldata _swapCalldata,
+  //   IERC20Detailed _fromToken,
+  //   IERC20Detailed _toToken,
+  //   uint256 _sellAmount
+  // ) external returns (uint256 _amountReceived);
 
   function deposit(address _asset, uint256 _amount) external;
 
@@ -78,28 +73,23 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
   //   );
   // }
 
-  function sellOnParaSwap(
-    uint256 _offset,
-    bytes memory _swapCalldata,
-    IERC20Detailed _fromToken,
-    IERC20Detailed _toToken,
-    uint256 _sellAmount,
-    uint256 _minReceiveAmount
-  ) external returns (uint256 _amountReceived) {
+  function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived) {
     _amountReceived = _sellOnParaSwap(
-      _offset, _swapCalldata, IERC20Detailed(_fromToken), IERC20Detailed(_toToken), _sellAmount, _minReceiveAmount
+      _sellParams.offset,
+      _sellParams.swapCalldata,
+      IERC20Detailed(_sellParams.fromToken),
+      IERC20Detailed(_sellParams.toToken),
+      _sellParams.sellAmount
     );
   }
 
   /**
-   * @dev Swaps a token for another using ParaSwap (exact in)
-   * @dev In case the swap input is less than the designated amount to sell, the excess remains in the contract
+   * @dev swaps token for another using ParaSwap (exact in)
    * @param _offset Offset of fromAmount in Augustus calldata if it should be overwritten, otherwise 0
    * @param _swapCalldata Data for Paraswap Adapter
    * @param _fromToken The address of the asset to swap from
    * @param _toToken The address of the asset to swap to
    * @param _sellAmount The amount of asset to swap from
-   * @param _minReceiveAmount The minimum amount to receive
    * @return _amountReceived The amount of asset bought
    */
   function _sellOnParaSwap(
@@ -107,27 +97,12 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
     bytes memory _swapCalldata,
     IERC20Detailed _fromToken,
     IERC20Detailed _toToken,
-    uint256 _sellAmount,
-    uint256 _minReceiveAmount
+    uint256 _sellAmount
   ) internal returns (uint256 _amountReceived) {
-    // (bytes memory _swapCalldata, IParaSwapAugustus augustus) = abi.decode(paraswapData, (bytes, IParaSwapAugustus));
     IParaSwapAugustus augustus = IParaSwapAugustus(0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57);
     require(AUGUSTUS_REGISTRY.isValidAugustus(address(augustus)), 'INVALID_AUGUSTUS');
 
-    // {
-    //   uint256 fromAssetDecimals = _getDecimals(_fromToken);
-    //   uint256 toAssetDecimals = _getDecimals(_toToken);
-
-    //   uint256 fromAssetPrice = _getPrice(address(_fromToken));
-    //   uint256 toAssetPrice = _getPrice(address(_toToken));
-
-    //   uint256 expectedMinAmountOut = (
-    //     (_sellAmount * (fromAssetPrice * (10 ** toAssetDecimals))) / (toAssetPrice * (10 ** fromAssetDecimals))
-    //   ).percentMul(PercentageMath.PERCENTAGE_FACTOR - MAX_SLIPPAGE_PERCENT);
-
-    //   // Sanity check for `_minReceiveAmount` to ensure it is within slippage bounds
-    //   require(expectedMinAmountOut <= _minReceiveAmount, '_minReceiveAmount exceeds max slippage');
-    // }
+    uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0xa4, 0x20)));
 
     uint256 _initBalFromToken = _fromToken.balanceOf(address(this));
     require(_initBalFromToken >= _sellAmount, 'INSUFFICIENT_BALANCE_BEFORE_SWAP');
