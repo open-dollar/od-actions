@@ -2,5 +2,5 @@
 pragma solidity 0.8.10;
 
 interface IParaswapAugustus {
-  function getTokenTransferProxy() external view returns (address);
+  function getTokenTransferProxy() external view returns (address _tokenTransferProxy);
 }
