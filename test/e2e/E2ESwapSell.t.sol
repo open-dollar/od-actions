@@ -10,13 +10,14 @@ import {BytesLib} from 'src/library/BytesLib.sol';
 
 contract E2ESwapSell is Test {
   address public constant user = 0xA0313248556DeA42fd17B345817Dd5DC5674c1E1;
+  address public constant AUGUSTUS = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
   uint256 public constant SELL_AMOUNT = 1_000_000_000_000_000;
 
   IParaswapSellAdapter public sellAdapter;
 
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'));
-    sellAdapter = new ParaswapSellAdapter(AugustusRegistry.ARBITRUM);
+    sellAdapter = new ParaswapSellAdapter(AugustusRegistry.ARBITRUM, AUGUSTUS);
   }
 
   function testSwap() public {

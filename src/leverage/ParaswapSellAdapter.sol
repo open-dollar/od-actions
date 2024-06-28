@@ -6,34 +6,9 @@ import {SafeERC20} from '@aave-core-v3/contracts/dependencies/openzeppelin/contr
 import {IERC20Detailed} from '@aave-core-v3/contracts/dependencies/openzeppelin/contracts/IERC20Detailed.sol';
 import {IPriceOracleGetter} from '@aave-core-v3/contracts/interfaces/IPriceOracleGetter.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
+import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
+import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
 import {BytesLib} from 'src/library/BytesLib.sol';
-
-interface IParaswapSellAdapter {
-  struct SellParams {
-    uint256 offset;
-    bytes swapCalldata;
-    address fromToken;
-    address toToken;
-    uint256 sellAmount;
-  }
-
-  /**
-   * @dev Emitted after a sell of an asset is made
-   * @param fromAsset The address of the asset sold
-   * @param toAsset The address of the asset received in exchange
-   * @param fromAmount The amount of asset sold
-   * @param receivedAmount The amount received from the sell
-   */
-  event Swapped(address indexed fromAsset, address indexed toAsset, uint256 fromAmount, uint256 receivedAmount);
-
-  function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
-  function deposit(address _asset, uint256 _amount) external;
-  function deposit(address _onBehalfOf, address _asset, uint256 _amount) external;
-}
-
-interface IParaSwapAugustus {
-  function getTokenTransferProxy() external view returns (address);
-}
 
 contract ParaswapSellAdapter is IParaswapSellAdapter {
   using SafeERC20 for IERC20Detailed;
@@ -43,13 +18,16 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
 
+  IParaswapAugustus public augustus;
+
   mapping(address => mapping(address => uint256)) internal _deposits;
 
   /**
    * @param _augustusRegistry address of Paraswap AugustusRegistry
    */
-  constructor(address _augustusRegistry) {
+  constructor(address _augustusRegistry, address _augustus) {
     AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_augustusRegistry);
+    augustus = IParaswapAugustus(_augustus);
   }
 
   function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived) {
@@ -78,7 +56,6 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
     IERC20Detailed _toToken,
     uint256 _sellAmount
   ) internal returns (uint256 _amountReceived) {
-    IParaSwapAugustus augustus = IParaSwapAugustus(0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57);
     require(AUGUSTUS_REGISTRY.isValidAugustus(address(augustus)), 'INVALID_AUGUSTUS');
 
     uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0xa4, 0x20)));
