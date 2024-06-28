@@ -4,7 +4,6 @@ pragma solidity 0.8.10;
 import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
 import {SafeERC20} from '@aave-core-v3/contracts/dependencies/openzeppelin/contracts/SafeERC20.sol';
 import {IERC20Detailed} from '@aave-core-v3/contracts/dependencies/openzeppelin/contracts/IERC20Detailed.sol';
-import {IPriceOracleGetter} from '@aave-core-v3/contracts/interfaces/IPriceOracleGetter.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
 import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
@@ -30,6 +29,10 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
     augustus = IParaswapAugustus(_augustus);
   }
 
+  /**
+   * @dev swaps token for another using ParaSwap (exact in)
+   * @param _sellParams IParaswapSellAdapter.SellParams
+   */
   function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived) {
     _amountReceived = _sellOnParaSwap(
       _sellParams.offset,
@@ -41,13 +44,12 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
   }
 
   /**
-   * @dev swaps token for another using ParaSwap (exact in)
-   * @param _offset Offset of fromAmount in Augustus calldata if it should be overwritten, otherwise 0
-   * @param _swapCalldata Data for Paraswap Adapter
-   * @param _fromToken The address of the asset to swap from
-   * @param _toToken The address of the asset to swap to
-   * @param _sellAmount The amount of asset to swap from
-   * @return _amountReceived The amount of asset bought
+   * @param _offset offset of fromAmount in Augustus calldata if it should be overwritten, otherwise 0
+   * @param _swapCalldata data for Paraswap adapter
+   * @param _fromToken address of the asset to swap from
+   * @param _toToken address of the asset to swap to
+   * @param _sellAmount amount of asset to swap from
+   * @return _amountReceived amount of asset bought
    */
   function _sellOnParaSwap(
     uint256 _offset,
@@ -56,7 +58,7 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
     IERC20Detailed _toToken,
     uint256 _sellAmount
   ) internal returns (uint256 _amountReceived) {
-    require(AUGUSTUS_REGISTRY.isValidAugustus(address(augustus)), 'INVALID_AUGUSTUS');
+    if (!AUGUSTUS_REGISTRY.isValidAugustus(address(augustus))) revert InvalidAugustus();
 
     uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0xa4, 0x20)));
 
@@ -69,33 +71,26 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
     _fromToken.safeApprove(tokenTransferProxy, _sellAmount);
 
     if (_offset != 0) {
-      // Ensure 256 bit (32 bytes) _offset value is within bounds of the
-      // calldata, not overlapping with the first 4 bytes (function selector).
+      // ensure 1 slot _offset is within bounds of calldata, not overlapping with function selector
       require(_offset >= 4 && _offset <= _swapCalldata.length - 32, 'FROM_AMOUNT_OFFSET_OUT_OF_RANGE');
-      // Overwrite the fromAmount with the correct amount for the swap.
-      // In memory, _swapCalldata consists of a 256 bit length field, followed by
-      // the actual bytes data, that is why 32 is added to the byte offset.
+      // overwrite the fromAmount with the correct amount for the swap
       assembly {
         mstore(add(_swapCalldata, add(_offset, 32)), _sellAmount)
       }
     }
     (bool success,) = address(augustus).call(_swapCalldata);
     if (!success) {
-      // Copy revert reason from call
       assembly {
         returndatacopy(0, 0, returndatasize())
         revert(0, returndatasize())
       }
     }
 
-    // amount provided should be equal (or less) than `_sellAmount`
     uint256 _amountSold = _initBalFromToken - _fromToken.balanceOf(address(this));
-    require(_sellAmount <= _amountSold, 'WRONG_BALANCE_AFTER_SWAP');
+    if (_sellAmount > _amountSold) revert OverSell();
 
-    // amount received should be more than or equal `_minReceiveAmount`
     _amountReceived = _toToken.balanceOf(address(this)) - _initBalToToken;
-    require(_amountReceived >= _minReceiveAmount, 'INSUFFICIENT_AMOUNT_RECEIVED');
-
+    if (_amountReceived < _minReceiveAmount) revert UnderBuy();
     emit Swapped(address(_fromToken), address(_toToken), _amountSold, _amountReceived);
   }
 

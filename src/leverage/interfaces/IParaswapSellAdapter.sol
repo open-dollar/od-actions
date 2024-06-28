@@ -2,6 +2,19 @@
 pragma solidity 0.8.10;
 
 interface IParaswapSellAdapter {
+  /**
+   * @dev emitted after a sell of an asset is made
+   * @param _fromAsset address of the asset sold
+   * @param _toAsset address of the asset received in exchange
+   * @param _fromAmount amount of asset sold
+   * @param _receivedAmount amount received from the sell
+   */
+  event Swapped(address indexed _fromAsset, address indexed _toAsset, uint256 _fromAmount, uint256 _receivedAmount);
+
+  error InvalidAugustus();
+  error OverSell();
+  error UnderBuy();
+
   struct SellParams {
     uint256 offset;
     bytes swapCalldata;
@@ -9,15 +22,6 @@ interface IParaswapSellAdapter {
     address toToken;
     uint256 sellAmount;
   }
-
-  /**
-   * @dev Emitted after a sell of an asset is made
-   * @param fromAsset The address of the asset sold
-   * @param toAsset The address of the asset received in exchange
-   * @param fromAmount The amount of asset sold
-   * @param receivedAmount The amount received from the sell
-   */
-  event Swapped(address indexed fromAsset, address indexed toAsset, uint256 fromAmount, uint256 receivedAmount);
 
   function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
   function deposit(address _asset, uint256 _amount) external;
