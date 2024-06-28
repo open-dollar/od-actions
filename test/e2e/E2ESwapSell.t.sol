@@ -20,7 +20,12 @@ contract E2ESwapSell is Test {
     sellAdapter = new ParaswapSellAdapter(AugustusRegistry.ARBITRUM, AUGUSTUS);
   }
 
-  function testSwap() public {
+  /**
+   * @dev test limited due to current real funds and approvals on arb-mainnet dev-wallet
+   * since the transaction order creation depends on checking balances and approvals from
+   * `findSwapRoute.js` script that makes actual route request from ParaSwap SDK
+   */
+  function testSwapRethToWeth() public {
     bytes memory _res = _getSwapRoute(RETH_ADDR, 18, WETH_ADDR, 18, SELL_AMOUNT);
 
     IParaswapSellAdapter.SellParams memory _sellParams =
