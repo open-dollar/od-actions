@@ -20,7 +20,7 @@ contract E2ESwapSell is Test {
   }
 
   function testSwap() public {
-    bytes memory _res = _getSwapRoute();
+    bytes memory _res = _getSwapRoute(RETH_ADDR, 18, WETH_ADDR, 18, SELL_AMOUNT);
 
     IParaswapSellAdapter.SellParams memory _sellParams =
       IParaswapSellAdapter.SellParams(0, _res, RETH_ADDR, WETH_ADDR, SELL_AMOUNT);
@@ -38,10 +38,21 @@ contract E2ESwapSell is Test {
     IParaswapSellAdapter(_adapter).deposit(RETH_ADDR, SELL_AMOUNT);
   }
 
-  function _getSwapRoute() internal returns (bytes memory _result) {
-    string[] memory inputs = new string[](2);
+  function _getSwapRoute(
+    address _fromToken,
+    uint256 _fromDecimals,
+    address _toToken,
+    uint256 _toDecimals,
+    uint256 _sellAmount
+  ) internal returns (bytes memory _result) {
+    string[] memory inputs = new string[](7);
     inputs[0] = 'node';
     inputs[1] = './script/findSwapRoute.js';
+    inputs[2] = vm.toString(_fromToken);
+    inputs[3] = vm.toString(_fromDecimals);
+    inputs[4] = vm.toString(_toToken);
+    inputs[5] = vm.toString(_toDecimals);
+    inputs[6] = vm.toString(_sellAmount);
 
     _result = vm.ffi(inputs);
   }

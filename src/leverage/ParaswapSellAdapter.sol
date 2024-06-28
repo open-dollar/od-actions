@@ -27,16 +27,7 @@ interface IParaswapSellAdapter {
   event Swapped(address indexed fromAsset, address indexed toAsset, uint256 fromAmount, uint256 receivedAmount);
 
   function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
-  // function sellOnParaSwap(
-  //   uint256 _offset,
-  //   bytes calldata _swapCalldata,
-  //   IERC20Detailed _fromToken,
-  //   IERC20Detailed _toToken,
-  //   uint256 _sellAmount
-  // ) external returns (uint256 _amountReceived);
-
   function deposit(address _asset, uint256 _amount) external;
-
   function deposit(address _onBehalfOf, address _asset, uint256 _amount) external;
 }
 
@@ -51,7 +42,6 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
   // uint256 public constant MAX_SLIPPAGE_PERCENT = 0.3e4; // 30.00%
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
-  // IPriceOracleGetter public immutable ORACLE;
 
   mapping(address => mapping(address => uint256)) internal _deposits;
 
@@ -61,17 +51,6 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
   constructor(address _augustusRegistry) {
     AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_augustusRegistry);
   }
-
-  // function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived) {
-  //   _amountReceived = _sellOnParaSwap(
-  //     _sellParams.offset,
-  //     _sellParams.paraswapData,
-  //     IERC20Detailed(_sellParams.fromToken),
-  //     IERC20Detailed(_sellParams.toToken),
-  //     _sellParams.sellAmount,
-  //     _sellParams.minReceiveAmount
-  //   );
-  // }
 
   function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived) {
     _amountReceived = _sellOnParaSwap(
