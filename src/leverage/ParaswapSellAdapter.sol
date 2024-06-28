@@ -63,23 +63,23 @@ contract ParaswapSellAdapter is IParaswapSellAdapter {
     uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0xa4, 0x20)));
 
     uint256 _initBalFromToken = _fromToken.balanceOf(address(this));
-    require(_initBalFromToken >= _sellAmount, 'INSUFFICIENT_BALANCE_BEFORE_SWAP');
+    if (_initBalFromToken < _sellAmount) revert InsufficientBalance();
 
     uint256 _initBalToToken = _toToken.balanceOf(address(this));
 
-    address tokenTransferProxy = augustus.getTokenTransferProxy();
-    _fromToken.safeApprove(tokenTransferProxy, _sellAmount);
+    address _tokenTransferProxy = augustus.getTokenTransferProxy();
+    _fromToken.safeApprove(_tokenTransferProxy, _sellAmount);
 
     if (_offset != 0) {
       // ensure 1 slot _offset is within bounds of calldata, not overlapping with function selector
-      require(_offset >= 4 && _offset <= _swapCalldata.length - 32, 'FROM_AMOUNT_OFFSET_OUT_OF_RANGE');
+      if (_offset < 4 && _offset > _swapCalldata.length - 32) revert OffsetOutOfRange();
       // overwrite the fromAmount with the correct amount for the swap
       assembly {
         mstore(add(_swapCalldata, add(_offset, 32)), _sellAmount)
       }
     }
-    (bool success,) = address(augustus).call(_swapCalldata);
-    if (!success) {
+    (bool _ok,) = address(augustus).call(_swapCalldata);
+    if (!_ok) {
       assembly {
         returndatacopy(0, 0, returndatasize())
         revert(0, returndatasize())

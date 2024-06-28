@@ -12,6 +12,8 @@ interface IParaswapSellAdapter {
   event Swapped(address indexed _fromAsset, address indexed _toAsset, uint256 _fromAmount, uint256 _receivedAmount);
 
   error InvalidAugustus();
+  error InsufficientBalance();
+  error OffsetOutOfRange();
   error OverSell();
   error UnderBuy();
 
