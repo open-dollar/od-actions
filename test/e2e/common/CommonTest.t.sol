@@ -8,9 +8,9 @@ import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {ExitActions} from 'src/leverage/ExitActions.sol';
 import {LeverageCalculator} from 'src/leverage/LeverageCalculator.sol';
-import {Utils} from 'test/e2e/common/Utils.t.sol';
+import {BaseTest} from 'test/e2e/common/BaseTest.t.sol';
 
-contract CommonTest is Common, Utils {
+contract CommonTest is Common, BaseTest {
   using Math for uint256;
 
   uint256 public constant DEPOSIT = 10_000 ether;

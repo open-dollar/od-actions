@@ -5,7 +5,7 @@ import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
 import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadata.sol';
 import {FlashLoanSimpleReceiverBase} from '@aave-core-v3/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol';
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
-import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
+// import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
 import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
@@ -17,8 +17,7 @@ import {BytesLib} from 'src/library/BytesLib.sol';
  * - add modifiable contract for var updates
  */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter {
-  using PercentageMath for uint256;
-
+  // using PercentageMath for uint256;
   // uint256 public constant MAX_SLIPPAGE_PERCENT = 0.3e4; // 30.00%
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;

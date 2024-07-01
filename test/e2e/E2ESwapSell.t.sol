@@ -4,9 +4,9 @@ pragma solidity 0.8.20;
 import '@script/Registry.s.sol';
 import {AugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/AugustusRegistry.sol';
 import {ParaswapSellAdapter, IParaswapSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
-import {Utils} from 'test/e2e/common/Utils.t.sol';
+import {BaseTest} from 'test/e2e/common/BaseTest.t.sol';
 
-contract E2ESwapSell is Utils {
+contract E2ESwapSell is BaseTest {
   IParaswapSellAdapter public sellAdapter;
 
   function setUp() public virtual {
@@ -31,26 +31,5 @@ contract E2ESwapSell is Utils {
 
     sellAdapter.sellOnParaSwap(_sellParams);
     vm.stopPrank();
-  }
-
-  function _getSwapRoute(
-    address _fromToken,
-    uint256 _fromDecimals,
-    address _toToken,
-    uint256 _toDecimals,
-    uint256 _sellAmount,
-    address _caller
-  ) internal returns (bytes memory _result) {
-    string[] memory inputs = new string[](8);
-    inputs[0] = 'node';
-    inputs[1] = './script/findSwapRoute.js';
-    inputs[2] = vm.toString(_fromToken);
-    inputs[3] = vm.toString(_fromDecimals);
-    inputs[4] = vm.toString(_toToken);
-    inputs[5] = vm.toString(_toDecimals);
-    inputs[6] = vm.toString(_sellAmount);
-    inputs[7] = vm.toString(_caller);
-
-    _result = vm.ffi(inputs);
   }
 }
