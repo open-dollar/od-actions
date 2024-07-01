@@ -11,6 +11,11 @@ import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
 import {BytesLib} from 'src/library/BytesLib.sol';
 
+/**
+ * TODO:
+ * - add access control
+ * - add modifiable contract for var updates
+ */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter {
   using PercentageMath for uint256;
 
@@ -24,14 +29,16 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
 
   /**
    * @param _augustusRegistry address of Paraswap AugustusRegistry
+   * @param _augustusSwapper address of Paraswap AugustusSwapper
+   * @param _poolProvider address of Aave PoolAddressProvider
    */
   constructor(
     address _augustusRegistry,
-    address _augustus,
+    address _augustusSwapper,
     address _poolProvider
   ) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_poolProvider)) {
     AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_augustusRegistry);
-    augustus = IParaswapAugustus(_augustus);
+    augustus = IParaswapAugustus(_augustusSwapper);
   }
 
   /// @dev exact-in sell swap on ParaSwap
@@ -123,24 +130,3 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     _deposits[_account][_asset] = _amount;
   }
 }
-
-// /**
-//  * @dev Get the price of the asset from the oracle
-//  * @param asset The address of the asset
-//  * @return The price of the asset, based on the oracle denomination units
-//  */
-// function _getPrice(address asset) internal view returns (uint256) {
-//   return ORACLE.getAssetPrice(asset);
-// }
-
-// /**
-//  * @dev Get the decimals of an asset
-//  * @param asset The address of the asset
-//  * @return number of decimals of the asset
-//  */
-// function _getDecimals(IERC20Metadata asset) internal view returns (uint8) {
-//   uint8 decimals = asset.decimals();
-//   // Ensure 10**decimals won't overflow a uint256
-//   require(decimals <= 77, 'TOO_MANY_DECIMALS_ON_TOKEN');
-//   return decimals;
-// }
