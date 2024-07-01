@@ -1,12 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
+import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
 import {RAY} from '@opendollar/libraries/Math.sol';
 import {TKN} from '@opendollar/test/e2e/Common.t.sol';
 import {CommonTest} from 'test/e2e/common/CommonTest.t.sol';
 
 contract E2ECoinExit is CommonTest {
   address public arbitraryContract = address(0x1234abcd);
+
+  function setUp() public virtual override {
+    super.setUp();
+    aliceProxy = _deployOrFind(alice);
+    _openSafe(aliceProxy, TKN);
+
+    MintableERC20(token).mint(alice, DEPOSIT);
+
+    vm.prank(alice);
+    IERC20(token).approve(aliceProxy, type(uint256).max);
+
+    aliceNFV = vault721.getNfvState(vaults[aliceProxy]);
+  }
 
   function testLockCollateral() public {
     (uint256 _c1, uint256 _d1) = _getSAFE(TKN, aliceNFV.safeHandler);

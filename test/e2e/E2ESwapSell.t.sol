@@ -1,23 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.20;
 
-import 'forge-std/Test.sol';
 import '@script/Registry.s.sol';
-import {IERC20Detailed} from '@aave-core-v3/contracts/dependencies/openzeppelin/contracts/IERC20Detailed.sol';
-import {ParaswapSellAdapter, IParaswapSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
 import {AugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/AugustusRegistry.sol';
-import {BytesLib} from 'src/library/BytesLib.sol';
+import {ParaswapSellAdapter, IParaswapSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
+import {Utils} from 'test/e2e/common/Utils.t.sol';
 
-contract E2ESwapSell is Test {
-  address public constant user = 0xA0313248556DeA42fd17B345817Dd5DC5674c1E1;
-  address public constant AUGUSTUS = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
-  uint256 public constant SELL_AMOUNT = 1_000_000_000_000_000;
-
+contract E2ESwapSell is Utils {
   IParaswapSellAdapter public sellAdapter;
 
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'));
-    sellAdapter = new ParaswapSellAdapter(AugustusRegistry.ARBITRUM, AUGUSTUS);
+    sellAdapter =
+      new ParaswapSellAdapter(AugustusRegistry.ARBITRUM, PARASWAP_AUGUSTUS_SWAPPER, AAVE_POOL_ADDRESS_PROVIDER);
   }
 
   /**
@@ -26,22 +21,16 @@ contract E2ESwapSell is Test {
    * `findSwapRoute.js` script that makes actual route request from ParaSwap SDK
    */
   function testSwapRethToWeth() public {
-    bytes memory _res = _getSwapRoute(RETH_ADDR, 18, WETH_ADDR, 18, SELL_AMOUNT);
+    bytes memory _res = _getSwapRoute(RETH_ADDR, 18, WETH_ADDR, 18, SELL_AMOUNT, USER);
 
     IParaswapSellAdapter.SellParams memory _sellParams =
       IParaswapSellAdapter.SellParams(0, _res, RETH_ADDR, WETH_ADDR, SELL_AMOUNT);
 
-    vm.startPrank(user);
+    vm.startPrank(USER);
     _supply(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
 
     sellAdapter.sellOnParaSwap(_sellParams);
     vm.stopPrank();
-  }
-
-  function _supply(address _adapter, address _asset, uint256 _amount) internal {
-    deal(_asset, user, _amount);
-    IERC20Detailed(_asset).approve(address(_adapter), _amount);
-    IParaswapSellAdapter(_adapter).deposit(RETH_ADDR, SELL_AMOUNT);
   }
 
   function _getSwapRoute(
@@ -49,9 +38,10 @@ contract E2ESwapSell is Test {
     uint256 _fromDecimals,
     address _toToken,
     uint256 _toDecimals,
-    uint256 _sellAmount
+    uint256 _sellAmount,
+    address _caller
   ) internal returns (bytes memory _result) {
-    string[] memory inputs = new string[](7);
+    string[] memory inputs = new string[](8);
     inputs[0] = 'node';
     inputs[1] = './script/findSwapRoute.js';
     inputs[2] = vm.toString(_fromToken);
@@ -59,15 +49,8 @@ contract E2ESwapSell is Test {
     inputs[4] = vm.toString(_toToken);
     inputs[5] = vm.toString(_toDecimals);
     inputs[6] = vm.toString(_sellAmount);
+    inputs[7] = vm.toString(_caller);
 
     _result = vm.ffi(inputs);
   }
-
-  // function _borrow(address _adapter, address _asset, uint256 _amount) internal {
-  //   _adapter.borrow(_asset, _amount, 2, 0, user);
-  // }
-
-  // function _withdraw(address _adapter, address _asset, uint256 _amount) internal {
-  //   _adapter.withdraw(_asset, _amount, user);
-  // }
 }

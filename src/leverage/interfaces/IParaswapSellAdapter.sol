@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.10;
+pragma solidity 0.8.20;
+
+import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
+import {IPool} from '@aave-core-v3/contracts/interfaces/IPool.sol';
 
 interface IParaswapSellAdapter {
   /**
@@ -17,6 +20,13 @@ interface IParaswapSellAdapter {
   error OverSell();
   error UnderBuy();
 
+  /**
+   * @param _offset offset of fromAmount in Augustus calldata if it should be overwritten, otherwise 0
+   * @param _swapCalldata data for Paraswap adapter
+   * @param _fromToken address of the asset to swap from
+   * @param _toToken address of the asset to swap to
+   * @param _sellAmount amount of asset to swap from
+   */
   struct SellParams {
     uint256 offset;
     bytes swapCalldata;
@@ -25,7 +35,12 @@ interface IParaswapSellAdapter {
     uint256 sellAmount;
   }
 
+  /**
+   * @param _sellParams IParaswapSellAdapter.SellParams
+   * @return _amountReceived amount of asset bought
+   */
   function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
   function deposit(address _asset, uint256 _amount) external;
   function deposit(address _onBehalfOf, address _asset, uint256 _amount) external;
+  function requestFlashloan(address _asset, uint256 _amount) external;
 }
