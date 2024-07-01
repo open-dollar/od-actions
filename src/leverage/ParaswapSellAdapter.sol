@@ -64,8 +64,14 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   }
 
   /// @dev request to borrow asset on Aave
-  function requestFlashloan(address _asset, uint256 _amount) external {
-    POOL.flashLoanSimple({receiverAddress: address(this), asset: _asset, amount: _amount, params: '', referralCode: 0});
+  function requestFlashloan(SellParams memory _sellParams) external {
+    POOL.flashLoanSimple({
+      receiverAddress: address(this),
+      asset: address(_sellParams.toToken),
+      amount: _sellParams.sellAmount,
+      params: abi.encode(_sellParams),
+      referralCode: uint16(block.number)
+    });
   }
 
   /// @dev flashloan callback from Aave
@@ -76,7 +82,15 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     address initiator,
     bytes calldata params
   ) external override returns (bool) {
-    // add logic here
+    SellParams memory _sellParams = abi.decode(params, (SellParams));
+
+    // _sellOnParaSwap(
+    //   _sellParams.offset,
+    //   _sellParams.swapCalldata,
+    //   IERC20Metadata(_sellParams.fromToken),
+    //   IERC20Metadata(_sellParams.toToken),
+    //   _sellParams.sellAmount
+    // );
 
     uint256 _payBack = amount + premium;
     IERC20(asset).approve(address(POOL), _payBack);
@@ -99,7 +113,8 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     uint256 _sellAmount
   ) internal returns (uint256 _amountReceived) {
     if (!AUGUSTUS_REGISTRY.isValidAugustus(address(augustus))) revert InvalidAugustus();
-    uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0xa4, 0x20)));
+    uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0x144, 0x20))); // or 0x124, 0x20
+    if (_minReceiveAmount == 0) revert ZeroValue();
 
     uint256 _initBalFromToken = _fromToken.balanceOf(address(this));
     if (_initBalFromToken < _sellAmount) revert InsufficientBalance();

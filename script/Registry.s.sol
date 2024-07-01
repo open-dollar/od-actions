@@ -26,8 +26,8 @@ address constant PARASWAP_AUGUSTUS_RFQ = 0x0927FD43a7a87E3E8b81Df2c44B03C4756849
 address constant PARASWAP_AUGUSTUS_SWAPPER = 0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57;
 
 // Test Vars
-address constant USER = 0xA0313248556DeA42fd17B345817Dd5DC5674c1E1;
-uint256 constant SELL_AMOUNT = 1_000_000_000_000_000;
+address constant USER = 0x37c5B029f9c3691B3d47cb024f84E5E257aEb0BB;
+uint256 constant SELL_AMOUNT = 1 ether;
 
 // Token Kekkac256 Hashes for Aave
 bytes32 constant RETH_HASH = bytes32(keccak256('RETH'));

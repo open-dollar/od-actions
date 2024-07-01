@@ -19,6 +19,7 @@ interface IParaswapSellAdapter {
   error OffsetOutOfRange();
   error OverSell();
   error UnderBuy();
+  error ZeroValue();
 
   /**
    * @param _offset offset of fromAmount in Augustus calldata if it should be overwritten, otherwise 0
@@ -35,12 +36,15 @@ interface IParaswapSellAdapter {
     uint256 sellAmount;
   }
 
-  /**
-   * @param _sellParams IParaswapSellAdapter.SellParams
-   * @return _amountReceived amount of asset bought
-   */
+  /// @param _sellParams IParaswapSellAdapter.SellParams @return _amountReceived amount of asset bought
   function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
+
+  /// @param _sellParams IParaswapSellAdapter.SellParams
+  function requestFlashloan(SellParams memory _sellParams) external;
+
+  /// @param _asset token @param _amount to deposit
   function deposit(address _asset, uint256 _amount) external;
+
+  /// @param _onBehalfOf account to receive balance @param _asset token @param _amount to deposit
   function deposit(address _onBehalfOf, address _asset, uint256 _amount) external;
-  function requestFlashloan(address _asset, uint256 _amount) external;
 }
