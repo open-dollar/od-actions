@@ -15,6 +15,8 @@ import {BytesLib} from 'src/library/BytesLib.sol';
  * TODO:
  * - add access control
  * - add modifiable contract for var updates
+ * - add withdraw function
+ * - enforce max slippage rate
  */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter {
   // using PercentageMath for uint256;
@@ -38,6 +40,16 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   ) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_poolProvider)) {
     AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_augustusRegistry);
     augustus = IParaswapAugustus(_augustusSwapper);
+  }
+
+  /// @dev deposit asset for msg.sender
+  function deposit(address _asset, uint256 _amount) external {
+    _deposit(msg.sender, _asset, _amount);
+  }
+
+  /// @dev deposit asset for account
+  function deposit(address _onBehalfOf, address _asset, uint256 _amount) external {
+    _deposit(_onBehalfOf, _asset, _amount);
   }
 
   /// @dev exact-in sell swap on ParaSwap
@@ -72,14 +84,10 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     return true;
   }
 
-  /// @dev deposit asset for msg.sender
-  function deposit(address _asset, uint256 _amount) external {
-    _deposit(msg.sender, _asset, _amount);
-  }
-
-  /// @dev deposit asset for account
-  function deposit(address _onBehalfOf, address _asset, uint256 _amount) external {
-    _deposit(_onBehalfOf, _asset, _amount);
+  /// @dev transfer asset to this contract to use in flashloan-swap
+  function _deposit(address _account, address _asset, uint256 _amount) internal {
+    IERC20Metadata(_asset).transferFrom(_account, address(this), _amount);
+    _deposits[_account][_asset] = _amount;
   }
 
   /// @dev takes ParaSwap transaction data and executes sell swap
@@ -121,11 +129,5 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     _amountReceived = _toToken.balanceOf(address(this)) - _initBalToToken;
     if (_amountReceived < _minReceiveAmount) revert UnderBuy();
     emit Swapped(address(_fromToken), address(_toToken), _amountSold, _amountReceived);
-  }
-
-  /// @dev transfer asset to this contract to use in flashloan-swap
-  function _deposit(address _account, address _asset, uint256 _amount) internal {
-    IERC20Metadata(_asset).transferFrom(_account, address(this), _amount);
-    _deposits[_account][_asset] = _amount;
   }
 }
