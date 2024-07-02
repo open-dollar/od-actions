@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
 import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
 import {MintableERC20} from '@opendollar/contracts/for-test/MintableERC20.sol';
 import {TKN} from '@opendollar/test/e2e/Common.t.sol';
-import {CommonTest} from 'test/CommonTest.t.sol';
+import {CommonTest} from 'test/e2e/common/CommonTest.t.sol';
 
 contract E2ELeverageCalculator is CommonTest {
   address public constant LEVERAGE_HANDLER = address(0x1111);
@@ -12,6 +13,16 @@ contract E2ELeverageCalculator is CommonTest {
 
   function setUp() public virtual override {
     super.setUp();
+    aliceProxy = _deployOrFind(alice);
+    _openSafe(aliceProxy, TKN);
+
+    MintableERC20(token).mint(alice, DEPOSIT);
+
+    vm.prank(alice);
+    IERC20(token).approve(aliceProxy, type(uint256).max);
+
+    aliceNFV = vault721.getNfvState(vaults[aliceProxy]);
+
     MintableERC20(token).mint(address(this), DEPOSIT);
 
     leverageHandlerProxy = _deployOrFind(LEVERAGE_HANDLER);
