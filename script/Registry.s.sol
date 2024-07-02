@@ -3,6 +3,7 @@ pragma solidity >=0.8.0;
 
 // Open Dollar
 address constant OD_ADDR = 0x221A0f68770658C15B525d0F89F5da2baAB5f321;
+address constant VAULT721 = 0x0005AFE00fF7E7FF83667bFe4F2996720BAf0B36;
 
 // Open Dollar Pool Pair
 bytes32 constant WETH = bytes32('WETH');

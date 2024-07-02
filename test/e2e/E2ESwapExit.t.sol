@@ -31,8 +31,15 @@ contract E2ESwapExit is CommonTest {
 
     userNFV = vault721.getNfvState(vaults[userProxy]);
 
-    sellAdapter =
-      new ParaswapSellAdapter(AugustusRegistry.ARBITRUM, PARASWAP_AUGUSTUS_SWAPPER, AAVE_POOL_ADDRESS_PROVIDER);
+    sellAdapter = new ParaswapSellAdapter(
+      AugustusRegistry.ARBITRUM,
+      PARASWAP_AUGUSTUS_SWAPPER,
+      AAVE_POOL_ADDRESS_PROVIDER,
+      address(vault721),
+      address(exitActions),
+      address(collateralJoinFactory),
+      address(coinJoin)
+    );
 
     SELL_ADAPTER = address(sellAdapter);
 
@@ -46,21 +53,18 @@ contract E2ESwapExit is CommonTest {
   }
 
   function testRequestFlashloan() public {
-    deal(WETH_ADDR, USER, PREMIUM);
-    bytes memory _res = abi.encodePacked(bytes32(0x0));
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =
+      _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, SELL_AMOUNT * 2 / 3);
 
-    IParaswapSellAdapter.SellParams memory _sellParams =
-      IParaswapSellAdapter.SellParams(0, _res, RETH_ADDR, WETH_ADDR, SELL_AMOUNT);
+    vm.startPrank(USER);
+    _supplyAndDeposit(SELL_ADAPTER, RETH_ADDR, SELL_AMOUNT);
 
-    // vm.startPrank(USER);
-    // _supplyAndDeposit(SELL_ADAPTER, WETH_ADDR, PREMIUM);
+    assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), PREMIUM);
 
-    // assertEq(IERC20(WETH_ADDR).balanceOf(SELL_ADAPTER), PREMIUM);
+    sellAdapter.requestFlashloan(_sellParams, _dstAmount, vaults[userProxy], RETH);
+    assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), 0);
 
-    // sellAdapter.requestFlashloan(_sellParams);
-    // assertEq(IERC20(WETH_ADDR).balanceOf(SELL_ADAPTER), 0);
-
-    // vm.stopPrank;
+    vm.stopPrank;
   }
 
   /**

@@ -12,8 +12,15 @@ contract E2ESwapSell is BaseTest {
 
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'));
-    sellAdapter =
-      new ParaswapSellAdapter(AugustusRegistry.ARBITRUM, PARASWAP_AUGUSTUS_SWAPPER, AAVE_POOL_ADDRESS_PROVIDER);
+    sellAdapter = new ParaswapSellAdapter(
+      AugustusRegistry.ARBITRUM,
+      PARASWAP_AUGUSTUS_SWAPPER,
+      AAVE_POOL_ADDRESS_PROVIDER,
+      address(VAULT721),
+      address(0x123),
+      address(0x456),
+      address(0x789)
+    );
   }
 
   function testSwapRethToWeth() public {
@@ -66,6 +73,24 @@ contract E2ESwapSell is BaseTest {
 
     vm.startPrank(USER);
     _supplyAndDeposit(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
+    vm.stopPrank();
+  }
+
+  function testSwapRethToOpenDollar() public {
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(RETH_ADDR, OD_ADDR);
+
+    vm.startPrank(USER);
+    _supplyAndDeposit(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
+    vm.stopPrank();
+  }
+
+  function testSwapOpenDollarToReth() public {
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(OD_ADDR, RETH_ADDR);
+
+    vm.startPrank(USER);
+    _supplyAndDeposit(address(sellAdapter), OD_ADDR, SELL_AMOUNT);
     sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
     vm.stopPrank();
   }

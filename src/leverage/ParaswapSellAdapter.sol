@@ -7,9 +7,13 @@ import {FlashLoanSimpleReceiverBase} from '@aave-core-v3/contracts/flashloan/bas
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
 // import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
+import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
+import {IODSafeManager} from '@opendollar/interfaces/proxies/IODSafeManager.sol';
+import {ICollateralJoinFactory} from '@opendollar/interfaces/factories/ICollateralJoinFactory.sol';
+import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
-import {BytesLib} from 'src/library/BytesLib.sol';
+import {ExitActions} from 'src/leverage/ExitActions.sol';
 
 /**
  * TODO:
@@ -21,10 +25,18 @@ import {BytesLib} from 'src/library/BytesLib.sol';
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter {
   // using PercentageMath for uint256;
   // uint256 public constant MAX_SLIPPAGE_PERCENT = 0.3e4; // 30.00%
+  IERC20 public OD = IERC20(0x221A0f68770658C15B525d0F89F5da2baAB5f321);
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
+  ODProxy public immutable PS_ADAPTER_ODPROXY;
 
   IParaswapAugustus public augustus;
+
+  IODSafeManager public safeManager;
+  ICollateralJoinFactory public collateralJoinFactory;
+  // todo make interface for this
+  ExitActions public exitActions;
+  address public coinJoin;
 
   mapping(address => mapping(address => uint256)) internal _deposits;
 
@@ -32,14 +44,28 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
    * @param _augustusRegistry address of Paraswap AugustusRegistry
    * @param _augustusSwapper address of Paraswap AugustusSwapper
    * @param _poolProvider address of Aave PoolAddressProvider
+   * @param _vault721 address of OpenDollar Vault721
+   * @param _exitActions address of OpenDollar ExitActions
+   * @param _collateralJoinFactory address of OpenDollar CollateralJoinFactory
+   * @param _coinJoin address of OpenDollar CoinJoin
    */
   constructor(
     address _augustusRegistry,
     address _augustusSwapper,
-    address _poolProvider
+    address _poolProvider,
+    address _vault721,
+    address _exitActions,
+    address _collateralJoinFactory,
+    address _coinJoin
   ) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_poolProvider)) {
     AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_augustusRegistry);
     augustus = IParaswapAugustus(_augustusSwapper);
+    IVault721 _v721 = IVault721(_vault721);
+    safeManager = IODSafeManager(_v721.safeManager());
+    exitActions = ExitActions(_exitActions);
+    collateralJoinFactory = ICollateralJoinFactory(_collateralJoinFactory);
+    coinJoin = _coinJoin;
+    PS_ADAPTER_ODPROXY = ODProxy(_v721.build(address(this)));
   }
 
   /// @dev deposit asset for msg.sender
@@ -67,13 +93,31 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     );
   }
 
-  /// @dev request to borrow asset on Aave
-  function requestFlashloan(SellParams memory _sellParams) external {
+  /// @dev approve address(this) as safeHandler and request to borrow asset on Aave
+  function requestFlashloan(
+    SellParams memory _sellParams,
+    uint256 _minDstAmount,
+    uint256 _safeId,
+    bytes32 _cType
+  ) external {
+    safeManager.allowSAFE(_safeId, address(this), true);
+
+    bytes memory _payload = abi.encodeWithSelector(
+      exitActions.lockTokenCollateralAndGenerateDebtToAccount.selector,
+      address(this),
+      address(safeManager),
+      address(collateralJoinFactory.collateralJoins(_cType)),
+      coinJoin,
+      _safeId,
+      _sellParams.sellAmount,
+      _sellParams.sellAmount * 2 / 3
+    );
+
     POOL.flashLoanSimple({
       receiverAddress: address(this),
       asset: address(_sellParams.toToken),
       amount: _sellParams.sellAmount,
-      params: abi.encode(_sellParams),
+      params: abi.encode(_minDstAmount, _sellParams, _payload),
       referralCode: uint16(block.number)
     });
   }
@@ -86,15 +130,26 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     address initiator,
     bytes calldata params
   ) external override returns (bool) {
-    SellParams memory _sellParams = abi.decode(params, (SellParams));
+    (uint256 _minDstAmount, SellParams memory _sellParams, bytes memory _payload) =
+      abi.decode(params, (uint256, SellParams, bytes));
 
-    // _sellOnParaSwap(
-    //   _sellParams.offset,
-    //   _sellParams.swapCalldata,
-    //   IERC20Metadata(_sellParams.fromToken),
-    //   IERC20Metadata(_sellParams.toToken),
-    //   _sellParams.sellAmount
-    // );
+    uint256 _beforebalance = OD.balanceOf(address(this));
+    uint256 _sellAmount = _sellParams.sellAmount;
+
+    // lock collateral on behalf of user and generate debt to address(this)
+    PS_ADAPTER_ODPROXY.execute(address(exitActions), _payload);
+
+    // todo add error msg
+    if (_sellAmount != OD.balanceOf(address(this)) - _beforebalance) revert();
+
+    _sellOnParaSwap(
+      _sellParams.offset,
+      _sellParams.swapCalldata,
+      IERC20Metadata(_sellParams.fromToken),
+      IERC20Metadata(_sellParams.toToken),
+      _sellAmount,
+      _minDstAmount
+    );
 
     uint256 _payBack = amount + premium;
     IERC20(asset).approve(address(POOL), _payBack);
@@ -118,8 +173,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     uint256 _minDstAmount
   ) internal returns (uint256 _amountReceived) {
     if (!AUGUSTUS_REGISTRY.isValidAugustus(address(augustus))) revert InvalidAugustus();
-    // uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0x144, 0x20))); // or 0x124, 0x20
-    // if (_minReceiveAmount == 0) revert ZeroValue();
     if (_minDstAmount == 0) revert ZeroValue();
 
     uint256 _initBalFromToken = _fromToken.balanceOf(address(this));
