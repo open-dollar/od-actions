@@ -53,13 +53,17 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   }
 
   /// @dev exact-in sell swap on ParaSwap
-  function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived) {
+  function sellOnParaSwap(
+    SellParams memory _sellParams,
+    uint256 _minDstAmount
+  ) external returns (uint256 _amountReceived) {
     _amountReceived = _sellOnParaSwap(
       _sellParams.offset,
       _sellParams.swapCalldata,
       IERC20Metadata(_sellParams.fromToken),
       IERC20Metadata(_sellParams.toToken),
-      _sellParams.sellAmount
+      _sellParams.sellAmount,
+      _minDstAmount
     );
   }
 
@@ -110,11 +114,13 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     bytes memory _swapCalldata,
     IERC20Metadata _fromToken,
     IERC20Metadata _toToken,
-    uint256 _sellAmount
+    uint256 _sellAmount,
+    uint256 _minDstAmount
   ) internal returns (uint256 _amountReceived) {
     if (!AUGUSTUS_REGISTRY.isValidAugustus(address(augustus))) revert InvalidAugustus();
-    uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0x144, 0x20))); // or 0x124, 0x20
-    if (_minReceiveAmount == 0) revert ZeroValue();
+    // uint256 _minReceiveAmount = uint256(bytes32(BytesLib.slice(_swapCalldata, 0x144, 0x20))); // or 0x124, 0x20
+    // if (_minReceiveAmount == 0) revert ZeroValue();
+    if (_minDstAmount == 0) revert ZeroValue();
 
     uint256 _initBalFromToken = _fromToken.balanceOf(address(this));
     if (_initBalFromToken < _sellAmount) revert InsufficientBalance();
@@ -142,7 +148,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     if (_sellAmount > _amountSold) revert OverSell();
 
     _amountReceived = _toToken.balanceOf(address(this)) - _initBalToToken;
-    if (_amountReceived < _minReceiveAmount) revert UnderBuy();
+    if (_amountReceived < _minDstAmount) revert UnderBuy();
     emit Swapped(address(_fromToken), address(_toToken), _amountSold, _amountReceived);
   }
 }

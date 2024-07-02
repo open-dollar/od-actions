@@ -37,7 +37,10 @@ interface IParaswapSellAdapter {
   }
 
   /// @param _sellParams IParaswapSellAdapter.SellParams @return _amountReceived amount of asset bought
-  function sellOnParaSwap(SellParams memory _sellParams) external returns (uint256 _amountReceived);
+  function sellOnParaSwap(
+    SellParams memory _sellParams,
+    uint256 _minDstAmount
+  ) external returns (uint256 _amountReceived);
 
   /// @param _sellParams IParaswapSellAdapter.SellParams
   function requestFlashloan(SellParams memory _sellParams) external;

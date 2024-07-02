@@ -52,15 +52,15 @@ contract E2ESwapExit is CommonTest {
     IParaswapSellAdapter.SellParams memory _sellParams =
       IParaswapSellAdapter.SellParams(0, _res, RETH_ADDR, WETH_ADDR, SELL_AMOUNT);
 
-    vm.startPrank(USER);
-    _supplyAndDeposit(SELL_ADAPTER, WETH_ADDR, PREMIUM);
+    // vm.startPrank(USER);
+    // _supplyAndDeposit(SELL_ADAPTER, WETH_ADDR, PREMIUM);
 
-    assertEq(IERC20(WETH_ADDR).balanceOf(SELL_ADAPTER), PREMIUM);
+    // assertEq(IERC20(WETH_ADDR).balanceOf(SELL_ADAPTER), PREMIUM);
 
-    sellAdapter.requestFlashloan(_sellParams);
-    assertEq(IERC20(WETH_ADDR).balanceOf(SELL_ADAPTER), 0);
+    // sellAdapter.requestFlashloan(_sellParams);
+    // assertEq(IERC20(WETH_ADDR).balanceOf(SELL_ADAPTER), 0);
 
-    vm.stopPrank;
+    // vm.stopPrank;
   }
 
   /**

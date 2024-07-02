@@ -17,56 +17,56 @@ contract E2ESwapSell is BaseTest {
   }
 
   function testSwapRethToWeth() public {
-    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(RETH_ADDR, WETH_ADDR);
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(RETH_ADDR, WETH_ADDR);
 
     vm.startPrank(USER);
     _supplyAndDeposit(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
-    sellAdapter.sellOnParaSwap(_sellParams);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
     vm.stopPrank();
   }
 
   function testSwapWethToReth() public {
-    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WETH_ADDR, RETH_ADDR);
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(WETH_ADDR, RETH_ADDR);
 
     vm.startPrank(USER);
     _supplyAndDeposit(address(sellAdapter), WETH_ADDR, SELL_AMOUNT);
-    sellAdapter.sellOnParaSwap(_sellParams);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
     vm.stopPrank();
   }
 
   function testSwapWstethToWeth() public {
-    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WSTETH_ADDR, WETH_ADDR);
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(WSTETH_ADDR, WETH_ADDR);
 
     vm.startPrank(USER);
     _supplyAndDeposit(address(sellAdapter), WSTETH_ADDR, SELL_AMOUNT);
-    sellAdapter.sellOnParaSwap(_sellParams);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
     vm.stopPrank();
   }
 
   function testSwapWethToWsteth() public {
-    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WETH_ADDR, WSTETH_ADDR);
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(WETH_ADDR, WSTETH_ADDR);
 
     vm.startPrank(USER);
     _supplyAndDeposit(address(sellAdapter), WETH_ADDR, SELL_AMOUNT);
-    sellAdapter.sellOnParaSwap(_sellParams);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
     vm.stopPrank();
   }
 
   function testSwapWstethToReth() public {
-    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WSTETH_ADDR, RETH_ADDR);
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(WSTETH_ADDR, RETH_ADDR);
 
     vm.startPrank(USER);
     _supplyAndDeposit(address(sellAdapter), WSTETH_ADDR, SELL_AMOUNT);
-    sellAdapter.sellOnParaSwap(_sellParams);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
     vm.stopPrank();
   }
 
   function testSwapRethToWsteth() public {
-    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(RETH_ADDR, WSTETH_ADDR);
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) = _getFullUserInput(RETH_ADDR, WSTETH_ADDR);
 
     vm.startPrank(USER);
     _supplyAndDeposit(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
-    sellAdapter.sellOnParaSwap(_sellParams);
+    sellAdapter.sellOnParaSwap(_sellParams, _dstAmount);
     vm.stopPrank();
   }
 }
