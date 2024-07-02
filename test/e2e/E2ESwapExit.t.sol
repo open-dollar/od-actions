@@ -53,7 +53,7 @@ contract E2ESwapExit is CommonTest {
       IParaswapSellAdapter.SellParams(0, _res, RETH_ADDR, WETH_ADDR, SELL_AMOUNT);
 
     vm.startPrank(USER);
-    _supply(SELL_ADAPTER, WETH_ADDR, PREMIUM);
+    _supplyAndDeposit(SELL_ADAPTER, WETH_ADDR, PREMIUM);
 
     assertEq(IERC20(WETH_ADDR).balanceOf(SELL_ADAPTER), PREMIUM);
 

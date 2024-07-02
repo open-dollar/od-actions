@@ -17,15 +17,55 @@ contract E2ESwapSell is BaseTest {
   }
 
   function testSwapRethToWeth() public {
-    deal(RETH_ADDR, USER, SELL_AMOUNT);
-    bytes memory _res = _getSwapRoute(RETH_ADDR, 18, WETH_ADDR, 18, SELL_AMOUNT, USER);
-
-    IParaswapSellAdapter.SellParams memory _sellParams =
-      IParaswapSellAdapter.SellParams(0, _res, RETH_ADDR, WETH_ADDR, SELL_AMOUNT);
+    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(RETH_ADDR, WETH_ADDR);
 
     vm.startPrank(USER);
-    _supply(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
+    _supplyAndDeposit(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
+    sellAdapter.sellOnParaSwap(_sellParams);
+    vm.stopPrank();
+  }
 
+  function testSwapWethToReth() public {
+    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WETH_ADDR, RETH_ADDR);
+
+    vm.startPrank(USER);
+    _supplyAndDeposit(address(sellAdapter), WETH_ADDR, SELL_AMOUNT);
+    sellAdapter.sellOnParaSwap(_sellParams);
+    vm.stopPrank();
+  }
+
+  function testSwapWstethToWeth() public {
+    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WSTETH_ADDR, WETH_ADDR);
+
+    vm.startPrank(USER);
+    _supplyAndDeposit(address(sellAdapter), WSTETH_ADDR, SELL_AMOUNT);
+    sellAdapter.sellOnParaSwap(_sellParams);
+    vm.stopPrank();
+  }
+
+  function testSwapWethToWsteth() public {
+    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WETH_ADDR, WSTETH_ADDR);
+
+    vm.startPrank(USER);
+    _supplyAndDeposit(address(sellAdapter), WETH_ADDR, SELL_AMOUNT);
+    sellAdapter.sellOnParaSwap(_sellParams);
+    vm.stopPrank();
+  }
+
+  function testSwapWstethToReth() public {
+    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(WSTETH_ADDR, RETH_ADDR);
+
+    vm.startPrank(USER);
+    _supplyAndDeposit(address(sellAdapter), WSTETH_ADDR, SELL_AMOUNT);
+    sellAdapter.sellOnParaSwap(_sellParams);
+    vm.stopPrank();
+  }
+
+  function testSwapRethToWsteth() public {
+    IParaswapSellAdapter.SellParams memory _sellParams = _getSingleUserInput(RETH_ADDR, WSTETH_ADDR);
+
+    vm.startPrank(USER);
+    _supplyAndDeposit(address(sellAdapter), RETH_ADDR, SELL_AMOUNT);
     sellAdapter.sellOnParaSwap(_sellParams);
     vm.stopPrank();
   }
