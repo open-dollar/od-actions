@@ -14,30 +14,30 @@ contract BaseTest is Test {
   }
 
   function _getSingleUserInput(
-    address _tokenA,
-    address _tokenB
+    address _fromToken,
+    address _toToken
   ) internal returns (IParaswapSellAdapter.SellParams memory _sellParams) {
-    deal(_tokenA, USER, SELL_AMOUNT);
-    bytes memory _result = _getSwapRoute(_tokenA, 18, _tokenB, 18, SELL_AMOUNT, USER);
-    _sellParams = IParaswapSellAdapter.SellParams(0, _result, _tokenA, _tokenB, SELL_AMOUNT);
+    deal(_fromToken, USER, SELL_AMOUNT);
+    bytes memory _result = _getSwapRoute(_fromToken, 18, _toToken, 18, SELL_AMOUNT, USER);
+    _sellParams = IParaswapSellAdapter.SellParams(0, _result, _fromToken, _toToken, SELL_AMOUNT);
   }
 
   function _getFullUserInput(
-    address _tokenA,
-    address _tokenB
+    address _fromToken,
+    address _toToken
   ) internal returns (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) {
-    (_dstAmount, _sellParams) = _getFullUserInputWithAmount(_tokenA, _tokenB, SELL_AMOUNT);
+    (_dstAmount, _sellParams) = _getFullUserInputWithAmount(_fromToken, _toToken, SELL_AMOUNT);
   }
 
   function _getFullUserInputWithAmount(
-    address _tokenA,
-    address _tokenB,
+    address _fromToken,
+    address _toToken,
     uint256 _amount
   ) internal returns (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) {
-    deal(_tokenA, USER, _amount);
-    _dstAmount = uint256(bytes32(_getDstAmount(_tokenA, 18, _tokenB, 18, _amount, USER)));
-    bytes memory _result = _getSwapRoute(_tokenA, 18, _tokenB, 18, _amount, USER);
-    _sellParams = IParaswapSellAdapter.SellParams(0, _result, _tokenA, _tokenB, _amount);
+    deal(_fromToken, USER, _amount);
+    _dstAmount = uint256(bytes32(_getDstAmount(_fromToken, 18, _toToken, 18, _amount, USER)));
+    bytes memory _result = _getSwapRoute(_fromToken, 18, _toToken, 18, _amount, USER);
+    _sellParams = IParaswapSellAdapter.SellParams(0, _result, _fromToken, _toToken, _amount);
   }
 
   function _getDstAmount(

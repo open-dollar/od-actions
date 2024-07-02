@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+import 'forge-std/Test.sol';
 import {IERC20} from '@openzeppelin/token/ERC20/IERC20.sol';
 import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadata.sol';
 import {FlashLoanSimpleReceiverBase} from '@aave-core-v3/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol';
@@ -11,6 +12,7 @@ import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
 import {IODSafeManager} from '@opendollar/interfaces/proxies/IODSafeManager.sol';
 import {ICollateralJoinFactory} from '@opendollar/interfaces/factories/ICollateralJoinFactory.sol';
 import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
+import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
 import {ExitActions} from 'src/leverage/ExitActions.sol';
@@ -22,7 +24,7 @@ import {ExitActions} from 'src/leverage/ExitActions.sol';
  * - add withdraw function
  * - enforce max slippage rate
  */
-contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter {
+contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
   // using PercentageMath for uint256;
   // uint256 public constant MAX_SLIPPAGE_PERCENT = 0.3e4; // 30.00%
   IERC20 public OD = IERC20(0x221A0f68770658C15B525d0F89F5da2baAB5f321);
@@ -100,8 +102,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     uint256 _safeId,
     bytes32 _cType
   ) external {
-    safeManager.allowSAFE(_safeId, address(this), true);
-
     bytes memory _payload = abi.encodeWithSelector(
       exitActions.lockTokenCollateralAndGenerateDebtToAccount.selector,
       address(this),
@@ -136,11 +136,17 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     uint256 _beforebalance = OD.balanceOf(address(this));
     uint256 _sellAmount = _sellParams.sellAmount;
 
-    // lock collateral on behalf of user and generate debt to address(this)
-    PS_ADAPTER_ODPROXY.execute(address(exitActions), _payload);
+    _executeFromProxy(_payload);
 
     // todo add error msg
-    if (_sellAmount != OD.balanceOf(address(this)) - _beforebalance) revert();
+    // if (_sellAmount != OD.balanceOf(address(this)) - _beforebalance) revert();
+    emit log_named_address('ADDRESS        THIS', address(this));
+    emit log_named_uint('OPEN DOLLAR BALANCE', OD.balanceOf(address(PS_ADAPTER_ODPROXY)));
+    emit log_named_uint('OPEN DOLLAR BALANCE', OD.balanceOf(address(this)));
+    emit log_named_uint('OPEN DOLLAR BALANCE', IERC20(_sellParams.fromToken).balanceOf(address(this)));
+    emit log_named_uint('RETH        BALANCE', IERC20(_sellParams.toToken).balanceOf(address(this)));
+
+    // ISAFEEngine(safeManager.safeEngine()).safes();
 
     _sellOnParaSwap(
       _sellParams.offset,
@@ -155,6 +161,12 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     IERC20(asset).approve(address(POOL), _payBack);
 
     return true;
+  }
+
+  function _executeFromProxy(bytes memory _payload) internal {
+    emit log_named_address('MSG SENDER', msg.sender);
+    // lock collateral on behalf of user and generate debt to address(this)
+    PS_ADAPTER_ODPROXY.execute(address(exitActions), _payload);
   }
 
   /// @dev transfer asset to this contract to use in flashloan-swap

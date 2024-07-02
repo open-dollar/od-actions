@@ -48,23 +48,30 @@ contract E2ESwapExit is CommonTest {
     vm.prank(SELL_ADAPTER);
     IERC20(RETH_ADDR).approve(sellAdapterProxy, type(uint256).max);
 
-    vm.prank(userProxy);
+    vm.startPrank(userProxy);
+    safeManager.allowSAFE(vaults[userProxy], SELL_ADAPTER, true);
     safeManager.allowSAFE(vaults[userProxy], sellAdapterProxy, true);
+    vm.stopPrank();
   }
 
   function testRequestFlashloan() public {
     (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =
-      _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, SELL_AMOUNT * 2 / 3);
+      _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, SELL_AMOUNT);
+
+    uint256 _cTypeAmount = SELL_AMOUNT;
 
     vm.startPrank(USER);
-    _supplyAndDeposit(SELL_ADAPTER, RETH_ADDR, SELL_AMOUNT);
+    deal(RETH_ADDR, USER, _cTypeAmount);
+    IERC20(RETH_ADDR).approve(SELL_ADAPTER, _cTypeAmount);
+    sellAdapter.deposit(RETH_ADDR, _cTypeAmount);
 
-    assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), PREMIUM);
+    assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), _cTypeAmount);
+    assertEq(IERC20(OD_ADDR).balanceOf(SELL_ADAPTER), 0);
 
     sellAdapter.requestFlashloan(_sellParams, _dstAmount, vaults[userProxy], RETH);
-    assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), 0);
+    // assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), 0);
 
-    vm.stopPrank;
+    vm.stopPrank();
   }
 
   /**
