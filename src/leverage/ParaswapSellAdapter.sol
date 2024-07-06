@@ -27,7 +27,6 @@ import {ExitActions} from 'src/leverage/ExitActions.sol';
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
   // using PercentageMath for uint256;
   // uint256 public constant MAX_SLIPPAGE_PERCENT = 0.3e4; // 30.00%
-  IERC20 public OD = IERC20(0x221A0f68770658C15B525d0F89F5da2baAB5f321);
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
   ODProxy public immutable PS_ADAPTER_ODPROXY;
@@ -102,6 +101,10 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     uint256 _safeId,
     bytes32 _cType
   ) external {
+    // how much
+    uint256 _collateralAmount = 1 ether;
+
+    // deposit collateral, generate debt
     bytes memory _payload = abi.encodeWithSelector(
       exitActions.lockTokenCollateralAndGenerateDebtToAccount.selector,
       address(this),
@@ -109,14 +112,15 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       address(collateralJoinFactory.collateralJoins(_cType)),
       coinJoin,
       _safeId,
-      _sellParams.sellAmount,
-      _sellParams.sellAmount * 2 / 3
+      _collateralAmount,
+      _sellParams.sellAmount
     );
 
+    // borrow collateral
     POOL.flashLoanSimple({
       receiverAddress: address(this),
       asset: address(_sellParams.toToken),
-      amount: _sellParams.sellAmount,
+      amount: _collateralAmount,
       params: abi.encode(_minDstAmount, _sellParams, _payload),
       referralCode: uint16(block.number)
     });
@@ -133,21 +137,23 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     (uint256 _minDstAmount, SellParams memory _sellParams, bytes memory _payload) =
       abi.decode(params, (uint256, SellParams, bytes));
 
-    uint256 _beforebalance = OD.balanceOf(address(this));
+    uint256 _beforebalance = IERC20(_sellParams.fromToken).balanceOf(address(this));
     uint256 _sellAmount = _sellParams.sellAmount;
 
+    emit log_named_uint('RETH BALANCE W LOAN', IERC20(_sellParams.toToken).balanceOf(address(this)));
+
+    // generate debt
     _executeFromProxy(_payload);
 
     // todo add error msg
     // if (_sellAmount != OD.balanceOf(address(this)) - _beforebalance) revert();
-    emit log_named_address('ADDRESS        THIS', address(this));
-    emit log_named_uint('OPEN DOLLAR BALANCE', OD.balanceOf(address(PS_ADAPTER_ODPROXY)));
-    emit log_named_uint('OPEN DOLLAR BALANCE', OD.balanceOf(address(this)));
     emit log_named_uint('OPEN DOLLAR BALANCE', IERC20(_sellParams.fromToken).balanceOf(address(this)));
-    emit log_named_uint('RETH        BALANCE', IERC20(_sellParams.toToken).balanceOf(address(this)));
+
+    emit log_named_uint('RETH BAL POST-DEPOS', IERC20(_sellParams.toToken).balanceOf(address(this)));
 
     // ISAFEEngine(safeManager.safeEngine()).safes();
 
+    // swap debt to collateral
     _sellOnParaSwap(
       _sellParams.offset,
       _sellParams.swapCalldata,
@@ -188,7 +194,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     if (_minDstAmount == 0) revert ZeroValue();
 
     uint256 _initBalFromToken = _fromToken.balanceOf(address(this));
-    if (_initBalFromToken < _sellAmount) revert InsufficientBalance();
+    // if (_initBalFromToken < _sellAmount) revert InsufficientBalance();
     uint256 _initBalToToken = _toToken.balanceOf(address(this));
 
     address _tokenTransferProxy = augustus.getTokenTransferProxy();

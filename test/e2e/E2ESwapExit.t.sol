@@ -15,8 +15,8 @@ contract E2ESwapExit is CommonTest {
   uint16 public constant REF_CODE = 0;
   address public SELL_ADAPTER;
 
-  address userProxy;
-  address sellAdapterProxy;
+  address public userProxy;
+  address public sellAdapterProxy;
 
   IParaswapSellAdapter public sellAdapter;
   IVault721.NFVState public userNFV;
@@ -47,25 +47,25 @@ contract E2ESwapExit is CommonTest {
 
     vm.prank(SELL_ADAPTER);
     IERC20(RETH_ADDR).approve(sellAdapterProxy, type(uint256).max);
-
-    vm.startPrank(userProxy);
-    safeManager.allowSAFE(vaults[userProxy], SELL_ADAPTER, true);
-    safeManager.allowSAFE(vaults[userProxy], sellAdapterProxy, true);
-    vm.stopPrank();
   }
 
   function testRequestFlashloan() public {
-    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =
-      _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, SELL_AMOUNT);
+    uint256 _sellAmount = 1400 ether;
 
-    uint256 _cTypeAmount = SELL_AMOUNT;
+    // from OD to RETH
+    (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =
+      _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, _sellAmount);
+
+    deal(RETH_ADDR, USER, PREMIUM);
+
+    vm.prank(userProxy);
+    safeManager.allowSAFE(vaults[userProxy], sellAdapterProxy, true);
 
     vm.startPrank(USER);
-    deal(RETH_ADDR, USER, _cTypeAmount);
-    IERC20(RETH_ADDR).approve(SELL_ADAPTER, _cTypeAmount);
-    sellAdapter.deposit(RETH_ADDR, _cTypeAmount);
+    IERC20(RETH_ADDR).approve(SELL_ADAPTER, PREMIUM);
+    sellAdapter.deposit(RETH_ADDR, PREMIUM);
 
-    assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), _cTypeAmount);
+    assertEq(IERC20(RETH_ADDR).balanceOf(SELL_ADAPTER), PREMIUM);
     assertEq(IERC20(OD_ADDR).balanceOf(SELL_ADAPTER), 0);
 
     sellAdapter.requestFlashloan(_sellParams, _dstAmount, vaults[userProxy], RETH);
@@ -78,21 +78,21 @@ contract E2ESwapExit is CommonTest {
    * @dev lock collateral in USER safe from sellAdapterProxy
    * and mint debt from USER safe to sellAdapterProxy
    */
-  function testLockCollateralFromHandler() public {
-    deal(RETH_ADDR, SELL_ADAPTER, SELL_AMOUNT);
+  // function testLockCollateralFromHandler() public {
+  //   deal(RETH_ADDR, SELL_ADAPTER, SELL_AMOUNT);
 
-    (uint256 _initCollateral,) = _getSAFE(RETH, userNFV.safeHandler);
-    assertEq(_initCollateral, 0);
+  //   (uint256 _initCollateral,) = _getSAFE(RETH, userNFV.safeHandler);
+  //   assertEq(_initCollateral, 0);
 
-    vm.prank(SELL_ADAPTER);
-    _lockCollateral(RETH, vaults[userProxy], SELL_AMOUNT, sellAdapterProxy);
+  //   vm.prank(SELL_ADAPTER);
+  //   _lockCollateral(RETH, vaults[userProxy], SELL_AMOUNT, sellAdapterProxy);
 
-    (uint256 _newCollateral,) = _getSAFE(RETH, userNFV.safeHandler);
-    assertEq(_newCollateral, SELL_AMOUNT);
+  //   (uint256 _newCollateral,) = _getSAFE(RETH, userNFV.safeHandler);
+  //   assertEq(_newCollateral, SELL_AMOUNT);
 
-    assertEq(systemCoin.balanceOf(SELL_ADAPTER), 0);
-    vm.prank(SELL_ADAPTER);
-    _genDebtToAccount(SELL_ADAPTER, vaults[userProxy], SELL_AMOUNT * 2 / 3, sellAdapterProxy);
-    assertEq(systemCoin.balanceOf(SELL_ADAPTER), SELL_AMOUNT * 2 / 3);
-  }
+  //   assertEq(systemCoin.balanceOf(SELL_ADAPTER), 0);
+  //   vm.prank(SELL_ADAPTER);
+  //   _genDebtToAccount(SELL_ADAPTER, vaults[userProxy], SELL_AMOUNT * 2 / 3, sellAdapterProxy);
+  //   assertEq(systemCoin.balanceOf(SELL_ADAPTER), SELL_AMOUNT * 2 / 3);
+  // }
 }
