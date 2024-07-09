@@ -31,6 +31,8 @@ contract CommonTest is Common, BaseTest {
 
   function setUp() public virtual override {
     super.setUp();
+    // todo: enable systemCoin on Mainnet feature
+    // useCoin = true
     exitActions = new ExitActions();
     leverageCalculator = new LeverageCalculator(address(vault721));
     token = address(collateral[TKN]);
