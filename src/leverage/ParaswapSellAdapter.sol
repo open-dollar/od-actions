@@ -22,6 +22,8 @@ import {ExitActions} from 'src/leverage/ExitActions.sol';
  * - add modifiable contract for var updates
  * - add withdraw function
  * - enforce max slippage rate
+ * - simplify the constructor with a struct
+ * - remove Test inheritance
  */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
   // using PercentageMath for uint256;
@@ -161,10 +163,10 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
 
     uint256 _payBack = amount + premium;
     IERC20Metadata(asset).approve(address(POOL), _payBack);
-
     return true;
   }
 
+  /// @dev execute payload with delegate call via proxy for address(this)
   function _executeFromProxy(bytes memory _payload) internal {
     PS_ADAPTER_ODPROXY.execute(address(exitActions), _payload);
   }
