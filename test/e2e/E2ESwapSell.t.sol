@@ -13,6 +13,7 @@ contract E2ESwapSell is BaseTest {
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'));
     sellAdapter = new ParaswapSellAdapter(
+      address(0xaaa),
       AugustusRegistry.ARBITRUM,
       PARASWAP_AUGUSTUS_SWAPPER,
       AAVE_POOL_ADDRESS_PROVIDER,
