@@ -25,9 +25,14 @@
     "test:coverage": "forge coverage --report lcov && lcov --ignore-errors unused --remove lcov.info 'node_modules/*' 'script/*' 'test/*' 'src/contracts/for-test/*' 'src/libraries/*' -o lcov.info.pruned && mv lcov.info.pruned lcov.info && genhtml -o coverage-report lcov.info"
   },
   "dependencies": {
-    "@opendollar/contracts": "0.0.0-e31c2151",
+    "@opendollar/contracts": "0.0.0-984c17c2",
+    "@openzeppelin-contracts-3.4.2-solc-0.7": "yarn:@openzeppelin/contracts@^3.4.2",
     "@openzeppelin/contracts": "4.9.6",
-    "@paraswap/sdk": "^6.7.0"
+    "@paraswap/sdk": "^6.7.0",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "ethers": "^5.7.2",
+    "object-hash": "^3.0.0"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

@@ -42,10 +42,12 @@ contract LeverageCalculator {
       // TODO: recalculate collateral or execute leverage swap
       _debtIterator = calculateSingleLeverage(_safeId);
     }
+
+    return _leverage;
   }
 
   /// @dev calculate max flashloan leverage based on initial locked collateral
-  function calculateFlashLeverage(uint256 _safeId) external view returns (uint256 _leverage) {
+  function calculateFlashLeverage(uint256 _safeId) external pure returns (uint256 _leverage) {
     // TODO: calculate max leverage
     return _safeId;
   }
@@ -57,9 +59,9 @@ contract LeverageCalculator {
 
   /// @dev get cType and safe handler of NFV
   function getNFVIds(uint256 _safeId) public view returns (bytes32 _cType, address _safeHandler) {
-    IVault721.NFVState memory nftState = VAULT721.getNfvState(_safeId);
-    _cType = nftState.cType;
-    _safeHandler = nftState.safeHandler;
+    IVault721.NFVState memory _nftState = VAULT721.getNfvState(_safeId);
+    _cType = _nftState.cType;
+    _safeHandler = _nftState.safeHandler;
   }
 
   /// @dev get locked collateral and generated debt
