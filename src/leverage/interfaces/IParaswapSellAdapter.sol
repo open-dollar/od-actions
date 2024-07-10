@@ -54,6 +54,7 @@ interface IParaswapSellAdapter {
    */
   function requestFlashloan(
     SellParams memory _sellParams,
+    uint256 _initCollateral,
     uint256 _collateralLoan,
     uint256 _minDstAmount,
     uint256 _safeId,

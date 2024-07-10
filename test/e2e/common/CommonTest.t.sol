@@ -6,6 +6,7 @@ import {Math} from '@opendollar/libraries/Math.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
 import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
+import {DelayedOracleForTest} from '@opendollar/test/mocks/DelayedOracleForTest.sol';
 import {ExitActions} from 'src/leverage/ExitActions.sol';
 import {LeverageCalculator} from 'src/leverage/LeverageCalculator.sol';
 import {BaseTest} from 'test/e2e/common/BaseTest.t.sol';
@@ -36,6 +37,15 @@ contract CommonTest is Common, BaseTest {
     exitActions = new ExitActions();
     leverageCalculator = new LeverageCalculator(address(vault721));
     token = address(collateral[TKN]);
+  }
+
+  function _setCTypePrice(bytes32 _cType, uint256 _price) internal {
+    DelayedOracleForTest(address(delayedOracle[_cType])).setPriceAndValidity(_price, true);
+    oracleRelayer.updateCollateralPrice(_cType);
+  }
+
+  function _readCTypePrice(bytes32 _cType) internal returns (uint256 _price) {
+    _price = delayedOracle[_cType].read();
   }
 
   function _deployOrFind(address _owner) internal returns (address _proxy) {

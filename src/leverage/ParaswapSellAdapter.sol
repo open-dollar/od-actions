@@ -102,6 +102,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   /// @dev approve address(this) as safeHandler and request to borrow asset on Aave
   function requestFlashloan(
     SellParams memory _sellParams,
+    uint256 _initCollateral,
     uint256 _collateralLoan,
     uint256 _minDstAmount,
     uint256 _safeId,
@@ -115,7 +116,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       address(collateralJoinFactory.collateralJoins(_cType)),
       coinJoin,
       _safeId,
-      _collateralLoan - PREMIUM,
+      _initCollateral + _collateralLoan,
       _sellParams.sellAmount
     );
 
@@ -141,11 +142,14 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       abi.decode(params, (uint256, SellParams, bytes));
 
     emit log_named_uint('RETH BAL AQUIRE LOAN', IERC20Metadata(_sellParams.toToken).balanceOf(address(this)));
+    emit log_named_uint('OD   BAL BEFORE LOCK', IERC20Metadata(_sellParams.fromToken).balanceOf(address(this)));
 
     uint256 _beforebalance = IERC20Metadata(_sellParams.fromToken).balanceOf(address(this));
     uint256 _sellAmount = _sellParams.sellAmount;
 
     _executeFromProxy(_payload);
+
+    emit log_named_uint('OD   BAL AFTER  LOCK', IERC20Metadata(_sellParams.fromToken).balanceOf(address(this)));
 
     // todo add error msg
     // if (_sellAmount != OD.balanceOf(address(this)) - _beforebalance) revert();
@@ -160,6 +164,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       _minDstAmount
     );
     emit log_named_uint('RETH BAL POST   SWAP', IERC20Metadata(_sellParams.toToken).balanceOf(address(this)));
+    emit log_named_uint('OD   BAL AFTER  SWAP', IERC20Metadata(_sellParams.fromToken).balanceOf(address(this)));
 
     uint256 _payBack = amount + premium;
     IERC20Metadata(asset).approve(address(POOL), _payBack);

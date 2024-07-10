@@ -14,6 +14,8 @@ src = "src"
 out = "out"
 libs = ["lib"]
 ffi = true
+fuzz_runs = 128
+optimizer_runs = 5_000
 
 [rpc_endpoints]
 mainnet = "${ARB_MAINNET_RPC}"
