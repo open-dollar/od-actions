@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import '@script/Registry.s.sol';
 import {AugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/AugustusRegistry.sol';
-import {ParaswapSellAdapter, IParaswapSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
+import {ParaswapSellAdapter, IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
 import {BaseTest} from 'test/e2e/common/BaseTest.t.sol';
 import {BytesLib} from 'src/library/BytesLib.sol';
 
@@ -12,8 +12,8 @@ contract E2ESwapSell is BaseTest {
 
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'));
-    sellAdapter = new ParaswapSellAdapter(
-      address(0xaaa),
+
+    InitSellAdapter memory _init = InitSellAdapter(
       AugustusRegistry.ARBITRUM,
       PARASWAP_AUGUSTUS_SWAPPER,
       AAVE_POOL_ADDRESS_PROVIDER,
@@ -22,6 +22,8 @@ contract E2ESwapSell is BaseTest {
       address(0x456),
       address(0x789)
     );
+
+    sellAdapter = new ParaswapSellAdapter(_init);
   }
 
   function testSwapRethToWeth() public {

@@ -28,12 +28,9 @@ contract CommonTest is Common, BaseTest {
   ExitActions public exitActions;
   LeverageCalculator public leverageCalculator;
 
-  mapping(address proxy => uint256 safeId) public vaults;
-
   function setUp() public virtual override {
+    _isCastTokens = true;
     super.setUp();
-    // todo: enable systemCoin on Mainnet feature
-    // useCoin = true
     exitActions = new ExitActions();
     leverageCalculator = new LeverageCalculator(address(vault721));
     token = address(collateral[TKN]);
@@ -44,7 +41,7 @@ contract CommonTest is Common, BaseTest {
     oracleRelayer.updateCollateralPrice(_cType);
   }
 
-  function _readCTypePrice(bytes32 _cType) internal returns (uint256 _price) {
+  function _readCTypePrice(bytes32 _cType) internal view returns (uint256 _price) {
     _price = delayedOracle[_cType].read();
   }
 

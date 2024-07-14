@@ -4,6 +4,25 @@ pragma solidity 0.8.20;
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPool} from '@aave-core-v3/contracts/interfaces/IPool.sol';
 
+/**
+ * _augustusRegistry address of Paraswap AugustusRegistry
+ * _augustusSwapper address of Paraswap AugustusSwapper
+ * _poolProvider address of Aave PoolAddressProvider
+ * _vault721 address of OpenDollar Vault721
+ * _exitActions address of OpenDollar ExitActions
+ * _collateralJoinFactory address of OpenDollar CollateralJoinFactory
+ * _coinJoin address of OpenDollar CoinJoin
+ */
+struct InitSellAdapter {
+  address augustusRegistry;
+  address augustusSwapper;
+  address poolProvider;
+  address vault721;
+  address exitActions;
+  address collateralJoinFactory;
+  address coinJoin;
+}
+
 interface IParaswapSellAdapter {
   /**
    * @dev emitted after a sell of an asset is made

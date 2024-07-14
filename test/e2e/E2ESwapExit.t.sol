@@ -6,7 +6,7 @@ import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadat
 import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {IDenominatedOracle} from '@opendollar/interfaces/oracles/IDenominatedOracle.sol';
 import {AugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/AugustusRegistry.sol';
-import {ParaswapSellAdapter, IParaswapSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
+import {ParaswapSellAdapter, IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
 import {CommonTest} from 'test/e2e/common/CommonTest.t.sol';
 import {Math} from '@opendollar/libraries/Math.sol';
 
@@ -44,8 +44,7 @@ contract E2ESwapExit is CommonTest {
 
     userNFV = vault721.getNfvState(vaults[userProxy]);
 
-    sellAdapter = new ParaswapSellAdapter(
-      address(systemCoin),
+    InitSellAdapter memory _init = InitSellAdapter(
       AugustusRegistry.ARBITRUM,
       PARASWAP_AUGUSTUS_SWAPPER,
       AAVE_POOL_ADDRESS_PROVIDER,
@@ -54,6 +53,8 @@ contract E2ESwapExit is CommonTest {
       address(collateralJoinFactory),
       address(coinJoin)
     );
+
+    sellAdapter = new ParaswapSellAdapter(_init);
 
     SELL_ADAPTER = address(sellAdapter);
 
@@ -107,7 +108,7 @@ contract E2ESwapExit is CommonTest {
   function testRequestFlashloan4() public {
     uint256 _initCapital = 10 ether;
 
-    /// @notice locked 55% collateral independently from capital allocated to leverage (swap loss?)
+    /// @notice locked 60% collateral independently from capital allocated to leverage (swap loss?)
     uint256 _additionalCapital = _initCapital * 60 / 100;
 
     _testRequestFlashLoan(_initCapital, _additionalCapital);
@@ -119,7 +120,7 @@ contract E2ESwapExit is CommonTest {
 
     // 100 / 1.35% = 74
     uint256 _percentMaxDebt = uint256(10_000) / uint256(135);
-    emit log_named_uint('_percentMaxDebt     ', _percentMaxDebt);
+    emit log_named_uint('_percentMaxDebt ', _percentMaxDebt);
 
     // 100 - 74 = 26
     uint256 _percentMakeUp = 100 - _percentMaxDebt;
@@ -155,6 +156,14 @@ contract E2ESwapExit is CommonTest {
     uint256 _deposit = _initCapital + _additionalCapital;
     deal(RETH_ADDR, USER, _deposit);
 
+    /**
+     * todo: 2 sdk calls to dynamically calculate
+     *   1. max leverage
+     *   2. sdk call to get slippage
+     *   3. recalculate max leverage w/ slippage
+     *   4. sdk get tx
+     *   5. call smart contract for Aave loan
+     */
     uint256 _maxLoan = _calculateMaxLeverage(_initCapital, 135);
     uint256 _sellAmount = _maxLoan.wmul(rethUsdPrice);
     emit log_named_uint('DEBT SELL     AMOUNT', _sellAmount);

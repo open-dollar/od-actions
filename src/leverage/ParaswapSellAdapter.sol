@@ -8,11 +8,13 @@ import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAd
 // import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
-import {IODSafeManager} from '@opendollar/interfaces/proxies/IODSafeManager.sol';
-import {ICollateralJoinFactory} from '@opendollar/interfaces/factories/ICollateralJoinFactory.sol';
-import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
-import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
-import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
+import {
+  ISystemCoin,
+  IODSafeManager,
+  ICollateralJoinFactory,
+  IVault721
+} from '@opendollar/libraries/OpenDollarV1Arbitrum.sol';
+import {IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
 import {ExitActions} from 'src/leverage/ExitActions.sol';
 
@@ -22,7 +24,6 @@ import {ExitActions} from 'src/leverage/ExitActions.sol';
  * - add modifiable contract for var updates
  * - add withdraw function
  * - enforce max slippage rate
- * - simplify the constructor with a struct
  * - remove Test inheritance
  */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
@@ -32,7 +33,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
   ODProxy public immutable PS_ADAPTER_ODPROXY;
-  IERC20Metadata public immutable OPEN_DOLLAR;
 
   IParaswapAugustus public augustus;
 
@@ -44,33 +44,16 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
 
   mapping(address => mapping(address => uint256)) internal _deposits;
 
-  /**
-   * @param _augustusRegistry address of Paraswap AugustusRegistry
-   * @param _augustusSwapper address of Paraswap AugustusSwapper
-   * @param _poolProvider address of Aave PoolAddressProvider
-   * @param _vault721 address of OpenDollar Vault721
-   * @param _exitActions address of OpenDollar ExitActions
-   * @param _collateralJoinFactory address of OpenDollar CollateralJoinFactory
-   * @param _coinJoin address of OpenDollar CoinJoin
-   */
-  constructor(
-    address _systemCoin,
-    address _augustusRegistry,
-    address _augustusSwapper,
-    address _poolProvider,
-    address _vault721,
-    address _exitActions,
-    address _collateralJoinFactory,
-    address _coinJoin
-  ) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_poolProvider)) {
-    OPEN_DOLLAR = IERC20Metadata(_systemCoin);
-    AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_augustusRegistry);
-    augustus = IParaswapAugustus(_augustusSwapper);
-    IVault721 _v721 = IVault721(_vault721);
+  constructor(InitSellAdapter memory _initSellAdapter)
+    FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_initSellAdapter.poolProvider))
+  {
+    AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_initSellAdapter.augustusRegistry);
+    augustus = IParaswapAugustus(_initSellAdapter.augustusSwapper);
+    IVault721 _v721 = IVault721(_initSellAdapter.vault721);
     safeManager = IODSafeManager(_v721.safeManager());
-    exitActions = ExitActions(_exitActions);
-    collateralJoinFactory = ICollateralJoinFactory(_collateralJoinFactory);
-    coinJoin = _coinJoin;
+    exitActions = ExitActions(_initSellAdapter.exitActions);
+    collateralJoinFactory = ICollateralJoinFactory(_initSellAdapter.collateralJoinFactory);
+    coinJoin = _initSellAdapter.coinJoin;
     PS_ADAPTER_ODPROXY = ODProxy(_v721.build(address(this)));
   }
 
@@ -135,7 +118,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     address asset,
     uint256 amount,
     uint256 premium,
-    address initiator,
+    address, /* initiator */
     bytes calldata params
   ) external override returns (bool) {
     (uint256 _minDstAmount, SellParams memory _sellParams, bytes memory _payload) =
@@ -180,6 +163,14 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   function _deposit(address _account, address _asset, uint256 _amount) internal {
     IERC20Metadata(_asset).transferFrom(_account, address(this), _amount);
     _deposits[_account][_asset] = _amount;
+  }
+
+  /// @dev transfer asset to this owner
+  function _withdraw(address _account, address _asset, uint256 _amount) internal {
+    uint256 _balance = _deposits[_account][_asset];
+    if (_balance < _amount) revert();
+    _deposits[_account][_asset] = _balance - _amount;
+    IERC20Metadata(_asset).transferFrom(address(this), _account, _amount);
   }
 
   /// @dev takes ParaSwap transaction data and executes sell swap

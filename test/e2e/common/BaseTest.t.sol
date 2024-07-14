@@ -71,7 +71,7 @@ contract BaseTest is Test {
   ) internal returns (bytes memory _result) {
     string[] memory inputs = new string[](8);
     inputs[0] = 'node';
-    inputs[1] = './script/getSwapRoute.js';
+    inputs[1] = './script/getSwapTransaction.js';
     inputs[2] = vm.toString(_fromToken);
     inputs[3] = vm.toString(_fromDecimals);
     inputs[4] = vm.toString(_toToken);
