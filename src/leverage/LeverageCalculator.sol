@@ -17,6 +17,14 @@ contract LeverageCalculator {
     SAFEENGINE = ISAFEEngine(IODSafeManager(VAULT721.safeManager()).safeEngine());
   }
 
+  function calculateMaxSafetyDebt(uint256 _safeId) public view returns (uint256 _maxSafetyDebt) {
+    (bytes32 _cType, address _safeHandler) = getNFVIds(_safeId);
+    (uint256 _collateral,) = getNFVLockedAndDebt(_cType, _safeHandler);
+    (uint256 _accumulatedRate, uint256 _safetyPrice) = getCData(_cType);
+
+    _maxSafetyDebt = _collateral.wmul(_safetyPrice).wdiv(_accumulatedRate);
+  }
+
   /// @dev calculate max single-swap leverage based on initial locked collateral
   function calculateSingleLeverage(uint256 _safeId) public view returns (uint256 _leverage) {
     (bytes32 _cType, address _safeHandler) = getNFVIds(_safeId);

@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import '@script/Registry.s.sol';
 import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadata.sol';
+import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {IDenominatedOracle} from '@opendollar/interfaces/oracles/IDenominatedOracle.sol';
 import {AugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/AugustusRegistry.sol';
@@ -69,118 +70,103 @@ contract E2ESwapExit is CommonTest {
   }
 
   /// @dev example of locking collateral at same time of leveraging
+  function testRequestFlashloanFuzz(uint256 _initCapital) public {
+    uint256 _initCapital = bound(_initCapital, 0.00001 ether, 5.5 ether);
+    _testRequestFlashLoan(_initCapital);
+  }
+
   function testRequestFlashloan0() public {
-    uint256 _initCapital = 0.1 ether;
-
-    /// @notice locked 30% collateral independently from capital allocated to leverage (swap loss?)
-    uint256 _additionalCapital = _initCapital * 30 / 100;
-
-    _testRequestFlashLoan(_initCapital, _additionalCapital);
+    uint256 _initCapital = 0.00001 ether;
+    _testRequestFlashLoan(_initCapital);
   }
 
   function testRequestFlashloan1() public {
-    uint256 _initCapital = 0.5 ether;
-
-    /// @notice locked 35% collateral independently from capital allocated to leverage (swap loss?)
-    uint256 _additionalCapital = _initCapital * 35 / 100;
-
-    _testRequestFlashLoan(_initCapital, _additionalCapital);
+    uint256 _initCapital = 0.0001 ether;
+    _testRequestFlashLoan(_initCapital);
   }
 
   function testRequestFlashloan2() public {
-    uint256 _initCapital = 1 ether;
-
-    /// @notice locked 45% collateral independently from capital allocated to leverage (swap loss?)
-    uint256 _additionalCapital = _initCapital * 45 / 100;
-
-    _testRequestFlashLoan(_initCapital, _additionalCapital);
+    uint256 _initCapital = 0.001 ether;
+    _testRequestFlashLoan(_initCapital);
   }
 
   function testRequestFlashloan3() public {
-    uint256 _initCapital = 5 ether;
-
-    /// @notice locked 55% collateral independently from capital allocated to leverage (swap loss?)
-    uint256 _additionalCapital = _initCapital * 55 / 100;
-
-    _testRequestFlashLoan(_initCapital, _additionalCapital);
+    uint256 _initCapital = 0.01 ether;
+    _testRequestFlashLoan(_initCapital);
   }
 
   function testRequestFlashloan4() public {
-    uint256 _initCapital = 10 ether;
-
-    /// @notice locked 60% collateral independently from capital allocated to leverage (swap loss?)
-    uint256 _additionalCapital = _initCapital * 60 / 100;
-
-    _testRequestFlashLoan(_initCapital, _additionalCapital);
+    uint256 _initCapital = 0.01 ether;
+    _testRequestFlashLoan(_initCapital);
   }
 
-  function testMath() public {
-    // intial reth
-    uint256 initialCollateral = 0.5 ether;
-
-    // 100 / 1.35% = 74
-    uint256 _percentMaxDebt = uint256(10_000) / uint256(135);
-    emit log_named_uint('_percentMaxDebt ', _percentMaxDebt);
-
-    // 100 - 74 = 26
-    uint256 _percentMakeUp = 100 - _percentMaxDebt;
-    emit log_named_uint('_percentMakeUp  ', _percentMakeUp);
-
-    uint256 _maxCollateral = initialCollateral * 100 / _percentMakeUp;
-    emit log_named_uint('_maxCollateral  ', _maxCollateral);
-
-    uint256 _maxTotalLoan = _maxCollateral - initialCollateral;
-    emit log_named_uint('_maxTotalLoan   ', _maxTotalLoan);
-
-    uint256 _maxLoan = _maxTotalLoan - (PREMIUM + MAX_SLIPPAGE_PERCENT);
-    emit log_named_uint('_maxLoan        ', _maxLoan);
+  function testRequestFlashloan5() public {
+    uint256 _initCapital = 0.5 ether;
+    _testRequestFlashLoan(_initCapital);
   }
 
-  // Helper Functions
-  function _calculateMaxLeverage(uint256 _initialCollateral, uint256 _safetyRatio) public returns (uint256) {
-    emit log_named_uint('_currentRethPrice   ', rethUsdPrice);
-
-    uint256 _percentMaxDebt = uint256(10_000) / _safetyRatio;
-    uint256 _percentMakeUp = 100 - _percentMaxDebt;
-
-    uint256 _maxCollateral = _initialCollateral * 100 / _percentMakeUp;
-    emit log_named_uint('_maxCollateral      ', _maxCollateral);
-
-    uint256 _maxTotalLoan = _maxCollateral - _initialCollateral;
-    emit log_named_uint('_maxTotalLoan       ', _maxTotalLoan);
-
-    return _maxTotalLoan;
+  function testRequestFlashloan6() public {
+    uint256 _initCapital = 1 ether;
+    _testRequestFlashLoan(_initCapital);
   }
 
-  function _testRequestFlashLoan(uint256 _initCapital, uint256 _additionalCapital) internal {
-    uint256 _deposit = _initCapital + _additionalCapital;
-    deal(RETH_ADDR, USER, _deposit);
+  function testRequestFlashloan7() public {
+    uint256 _initCapital = 5 ether;
+    _testRequestFlashLoan(_initCapital);
+  }
 
-    /**
-     * todo: 2 sdk calls to dynamically calculate
-     *   1. max leverage
-     *   2. sdk call to get slippage
-     *   3. recalculate max leverage w/ slippage
-     *   4. sdk get tx
-     *   5. call smart contract for Aave loan
-     */
-    uint256 _maxLoan = _calculateMaxLeverage(_initCapital, 135);
-    uint256 _sellAmount = _maxLoan.wmul(rethUsdPrice);
-    emit log_named_uint('DEBT SELL     AMOUNT', _sellAmount);
+  function testRequestFlashloan8() public {
+    uint256 _initCapital = 5.5 ether;
+    _testRequestFlashLoan(_initCapital);
+  }
+
+  function testRequestFlashloan9() public {
+    uint256 _initCapital = 5.6 ether;
+    _testRequestFlashLoan(_initCapital);
+  }
+
+  function testRequestFlashloan10() public {
+    uint256 _initCapital = 5.7 ether;
+    _testRequestFlashLoan(_initCapital);
+  }
+
+  function testRequestFlashloan11() public {
+    uint256 _initCapital = 5.8 ether;
+    _testRequestFlashLoan(_initCapital);
+  }
+
+  /**
+   * @dev MaxLev = 1/(1-LTV)
+   * Example:
+   * LTV = 66.7% = 0.667
+   * MaxLev = 1/(1 - 0.667) = 3
+   */
+  function _testRequestFlashLoan(uint256 _initCapital) internal {
+    deal(RETH_ADDR, USER, _initCapital);
+
+    // todo add dynamic safetyPercentage
+    // uint256 _multiplier = WAD.wdiv(WAD - uint256())
+
+    ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = safeEngine.cData(RETH);
+    uint256 _accumulatedRate = _safeEngCData.accumulatedRate;
+    uint256 _safetyPrice = _safeEngCData.safetyPrice;
+
+    uint256 _loanAmount = (_initCapital * 3) - _initCapital;
+    uint256 _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * 3;
 
     (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =
-      _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, _sellAmount);
+      _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, _leveragedDebt);
 
     vm.prank(userProxy);
     safeManager.allowSAFE(vaults[userProxy], sellAdapterProxy, true);
 
     vm.startPrank(USER);
-    IERC20Metadata(RETH_ADDR).approve(SELL_ADAPTER, _deposit);
-    sellAdapter.deposit(RETH_ADDR, _deposit);
-    sellAdapter.requestFlashloan(_sellParams, _initCapital, _maxLoan, _dstAmount, vaults[userProxy], RETH);
+    IERC20Metadata(RETH_ADDR).approve(SELL_ADAPTER, _initCapital);
+    sellAdapter.deposit(RETH_ADDR, _initCapital);
+    sellAdapter.requestFlashloan(_sellParams, _initCapital, _loanAmount, _dstAmount, vaults[userProxy], RETH);
     vm.stopPrank();
 
-    _logFinalValues(_deposit);
+    _logFinalValues(_initCapital);
   }
 
   function _logFinalValues(uint256 _deposit) internal {

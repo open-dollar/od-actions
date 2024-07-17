@@ -5,11 +5,12 @@ import 'forge-std/Test.sol';
 import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadata.sol';
 import {FlashLoanSimpleReceiverBase} from '@aave-core-v3/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol';
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
-// import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
+import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
 import {
   ISystemCoin,
+  ISAFEEngine,
   IODSafeManager,
   ICollateralJoinFactory,
   IVault721
@@ -27,8 +28,9 @@ import {ExitActions} from 'src/leverage/ExitActions.sol';
  * - remove Test inheritance
  */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
-  // using PercentageMath for uint256;
-  // uint256 public constant MAX_SLIPPAGE_PERCENT = 0.3e4; // 30.00%
+  using PercentageMath for uint256;
+
+  uint256 public constant MAX_SLIPPAGE_PERCENT = 0.03e4; // 3%
   uint256 public constant PREMIUM = 500_000_000_000;
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
@@ -189,6 +191,16 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     if (_initBalFromToken < _sellAmount) revert InsufficientBalance();
     uint256 _initBalToToken = _toToken.balanceOf(address(this));
 
+    //  uint256 expectedMaxAmountToSwap = amountToReceive
+    // .mul(toAssetPrice.mul(10**fromAssetDecimals))
+    // .div(fromAssetPrice.mul(10**toAssetDecimals))
+    // .percentMul(PercentageMath.PERCENTAGE_FACTOR.add(MAX_SLIPPAGE_PERCENT));
+
+    uint256 _maxSellAmount = _sellAmount + _sellAmount.percentMul(MAX_SLIPPAGE_PERCENT);
+    emit log_named_uint('_sellAmount         ', _sellAmount);
+    emit log_named_uint('_maxSellAmount      ', _maxSellAmount);
+    // if (_sellAmount > _maxSellAmount) revert OverSell();
+
     address _tokenTransferProxy = augustus.getTokenTransferProxy();
     _fromToken.approve(_tokenTransferProxy, _sellAmount);
 
@@ -213,5 +225,12 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     _amountReceived = _toToken.balanceOf(address(this)) - _initBalToToken;
     if (_amountReceived < _minDstAmount) revert UnderBuy();
     emit Swapped(address(_fromToken), address(_toToken), _amountSold, _amountReceived);
+  }
+
+  /// @dev get accumulated rate and safety price for a cType
+  function _getCData(bytes32 _cType) internal view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
+    ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = ISAFEEngine(safeManager.safeEngine()).cData(_cType);
+    _accumulatedRate = _safeEngCData.accumulatedRate;
+    _safetyPrice = _safeEngCData.safetyPrice;
   }
 }
