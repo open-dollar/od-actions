@@ -9,7 +9,6 @@ import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/Pe
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
 import {
-  ISystemCoin,
   ISAFEEngine,
   IODSafeManager,
   ICollateralJoinFactory,
@@ -191,16 +190,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     if (_initBalFromToken < _sellAmount) revert InsufficientBalance();
     uint256 _initBalToToken = _toToken.balanceOf(address(this));
 
-    //  uint256 expectedMaxAmountToSwap = amountToReceive
-    // .mul(toAssetPrice.mul(10**fromAssetDecimals))
-    // .div(fromAssetPrice.mul(10**toAssetDecimals))
-    // .percentMul(PercentageMath.PERCENTAGE_FACTOR.add(MAX_SLIPPAGE_PERCENT));
-
-    uint256 _maxSellAmount = _sellAmount + _sellAmount.percentMul(MAX_SLIPPAGE_PERCENT);
-    emit log_named_uint('_sellAmount         ', _sellAmount);
-    emit log_named_uint('_maxSellAmount      ', _maxSellAmount);
-    // if (_sellAmount > _maxSellAmount) revert OverSell();
-
     address _tokenTransferProxy = augustus.getTokenTransferProxy();
     _fromToken.approve(_tokenTransferProxy, _sellAmount);
 
@@ -220,7 +209,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       }
     }
     uint256 _amountSold = _initBalFromToken - _fromToken.balanceOf(address(this));
-    if (_sellAmount > _amountSold) revert OverSell();
+    if (_sellAmount < _amountSold) revert OverSell();
 
     _amountReceived = _toToken.balanceOf(address(this)) - _initBalToToken;
     if (_amountReceived < _minDstAmount) revert UnderBuy();

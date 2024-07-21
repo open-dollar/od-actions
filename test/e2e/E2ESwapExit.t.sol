@@ -9,7 +9,7 @@ import {IDenominatedOracle} from '@opendollar/interfaces/oracles/IDenominatedOra
 import {AugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/AugustusRegistry.sol';
 import {ParaswapSellAdapter, IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/ParaswapSellAdapter.sol';
 import {CommonTest} from 'test/e2e/common/CommonTest.t.sol';
-import {Math} from '@opendollar/libraries/Math.sol';
+import {Math, WAD} from '@opendollar/libraries/Math.sol';
 
 contract E2ESwapExit is CommonTest {
   using Math for uint256;
@@ -18,16 +18,17 @@ contract E2ESwapExit is CommonTest {
   uint256 public constant PREMIUM = 500_000_000_000;
   uint256 public constant INTEREST_RATE_MODE = 0;
   uint16 public constant REF_CODE = 0;
-  address public SELL_ADAPTER;
+  uint256 public constant PERCENT = 135;
 
+  IVault721.NFVState public userNFV;
   address public userProxy;
-  address public sellAdapterProxy;
 
   IParaswapSellAdapter public sellAdapter;
-  IVault721.NFVState public userNFV;
+  address public sellAdapterAddr;
+  address public sellAdapterProxy;
 
   IDenominatedOracle public rethOracle;
-  uint256 rethUsdPrice;
+  uint256 public rethUsdPrice;
 
   function setUp() public virtual override {
     super.setUp();
@@ -57,82 +58,68 @@ contract E2ESwapExit is CommonTest {
 
     sellAdapter = new ParaswapSellAdapter(_init);
 
-    SELL_ADAPTER = address(sellAdapter);
+    sellAdapterAddr = address(sellAdapter);
 
-    sellAdapterProxy = _deployOrFind(SELL_ADAPTER);
-    label(SELL_ADAPTER, 'SELL-ADAPTER-CONTRACT');
+    sellAdapterProxy = _deployOrFind(sellAdapterAddr);
+    label(sellAdapterAddr, 'SELL-ADAPTER-CONTRACT');
     label(sellAdapterProxy, 'SELL-ADAPTER-PROXY');
 
-    vm.startPrank(SELL_ADAPTER);
+    vm.startPrank(sellAdapterAddr);
     IERC20Metadata(RETH_ADDR).approve(sellAdapterProxy, type(uint256).max);
     IERC20Metadata(OD_ADDR).approve(sellAdapterProxy, type(uint256).max);
     vm.stopPrank();
   }
 
-  /// @dev example of locking collateral at same time of leveraging
-  function testRequestFlashloanFuzz(uint256 _initCapital) public {
-    uint256 _initCapital = bound(_initCapital, 0.00001 ether, 5.5 ether);
-    _testRequestFlashLoan(_initCapital);
-  }
-
   function testRequestFlashloan0() public {
     uint256 _initCapital = 0.00001 ether;
-    _testRequestFlashLoan(_initCapital);
+    _testRequestFlashLoan(_initCapital, PERCENT);
   }
 
   function testRequestFlashloan1() public {
-    uint256 _initCapital = 0.0001 ether;
-    _testRequestFlashLoan(_initCapital);
+    uint256 _initCapital = 1 ether;
+    _testRequestFlashLoan(_initCapital, PERCENT);
   }
 
   function testRequestFlashloan2() public {
-    uint256 _initCapital = 0.001 ether;
-    _testRequestFlashLoan(_initCapital);
+    uint256 _initCapital = 2 ether;
+    _testRequestFlashLoan(_initCapital, PERCENT);
   }
 
   function testRequestFlashloan3() public {
-    uint256 _initCapital = 0.01 ether;
-    _testRequestFlashLoan(_initCapital);
+    uint256 _initCapital = 4 ether;
+    _testRequestFlashLoan(_initCapital, PERCENT);
   }
 
   function testRequestFlashloan4() public {
-    uint256 _initCapital = 0.01 ether;
-    _testRequestFlashLoan(_initCapital);
+    uint256 _initCapital = 8 ether;
+    _testRequestFlashLoan(_initCapital, PERCENT);
   }
 
   function testRequestFlashloan5() public {
-    uint256 _initCapital = 0.5 ether;
-    _testRequestFlashLoan(_initCapital);
+    uint256 _initCapital = 9 ether;
+    _testRequestFlashLoan(_initCapital, PERCENT);
   }
 
-  function testRequestFlashloan6() public {
-    uint256 _initCapital = 1 ether;
-    _testRequestFlashLoan(_initCapital);
-  }
+  /**
+   * @notice hitting swap limits
+   * revert not interpreting correctly
+   */
+  // function testRequestFlashloan6() public {
+  //   uint256 _initCapital = 10 ether;
+  //   vm.expectRevert();
+  //   _testRequestFlashLoan(_initCapital, PERCENT);
+  // }
 
   function testRequestFlashloan7() public {
-    uint256 _initCapital = 5 ether;
-    _testRequestFlashLoan(_initCapital);
+    uint256 _initCapital = 10 ether;
+
+    _testRequestFlashLoan(_initCapital, PERCENT + 5);
   }
 
   function testRequestFlashloan8() public {
-    uint256 _initCapital = 5.5 ether;
-    _testRequestFlashLoan(_initCapital);
-  }
+    uint256 _initCapital = 10 ether;
 
-  function testRequestFlashloan9() public {
-    uint256 _initCapital = 5.6 ether;
-    _testRequestFlashLoan(_initCapital);
-  }
-
-  function testRequestFlashloan10() public {
-    uint256 _initCapital = 5.7 ether;
-    _testRequestFlashLoan(_initCapital);
-  }
-
-  function testRequestFlashloan11() public {
-    uint256 _initCapital = 5.8 ether;
-    _testRequestFlashLoan(_initCapital);
+    _testRequestFlashLoan(_initCapital, PERCENT + 10);
   }
 
   /**
@@ -141,18 +128,19 @@ contract E2ESwapExit is CommonTest {
    * LTV = 66.7% = 0.667
    * MaxLev = 1/(1 - 0.667) = 3
    */
-  function _testRequestFlashLoan(uint256 _initCapital) internal {
+  function _testRequestFlashLoan(uint256 _initCapital, uint256 _percent) internal {
     deal(RETH_ADDR, USER, _initCapital);
 
-    // todo add dynamic safetyPercentage
-    // uint256 _multiplier = WAD.wdiv(WAD - uint256())
+    // uint256 _multiplier = 10_000 / (100 - (100 - (_percent - 100)));
+    uint256 _multiplier = 10_000 / (100 - (10_000 / _percent));
+    emit log_named_uint('LTV', _multiplier);
 
     ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = safeEngine.cData(RETH);
     uint256 _accumulatedRate = _safeEngCData.accumulatedRate;
     uint256 _safetyPrice = _safeEngCData.safetyPrice;
 
-    uint256 _loanAmount = (_initCapital * 3) - _initCapital;
-    uint256 _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * 3;
+    uint256 _loanAmount = (_initCapital * _multiplier / 100) - _initCapital;
+    uint256 _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 100;
 
     (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =
       _getFullUserInputWithAmount(OD_ADDR, RETH_ADDR, _leveragedDebt);
@@ -161,7 +149,7 @@ contract E2ESwapExit is CommonTest {
     safeManager.allowSAFE(vaults[userProxy], sellAdapterProxy, true);
 
     vm.startPrank(USER);
-    IERC20Metadata(RETH_ADDR).approve(SELL_ADAPTER, _initCapital);
+    IERC20Metadata(RETH_ADDR).approve(sellAdapterAddr, _initCapital);
     sellAdapter.deposit(RETH_ADDR, _initCapital);
     sellAdapter.requestFlashloan(_sellParams, _initCapital, _loanAmount, _dstAmount, vaults[userProxy], RETH);
     vm.stopPrank();

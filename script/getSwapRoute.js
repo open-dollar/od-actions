@@ -42,7 +42,8 @@ async function getSwapRoute(_fromToken, _fromDecimals, _toToken, _toDecimals, _s
 		side: SwapSide.SELL,
 	});
 
-	console.log(`\n${_num}\nSRC: ${priceRoute.srcUSD}\nDST: ${priceRoute.destUSD}\nDIF: ${priceRoute.srcUSD - priceRoute.destUSD}\n\n`);
+	console.log(`\n${_num}\nSRC: ${priceRoute.srcUSD}\nDST: ${priceRoute.destUSD}\nDIF: ${priceRoute.srcUSD - priceRoute.destUSD}`);
+	console.log(`\n${_num}\nSRC: ${priceRoute.srcAmount}\nDST: ${priceRoute.destAmount}\n\n`);
 	// console.log(JSON.stringify(priceRoute, null, 3));
 	// console.log(`\n TRANSACTION \n`);
 
