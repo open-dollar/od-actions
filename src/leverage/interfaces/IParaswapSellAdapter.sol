@@ -18,6 +18,7 @@ struct InitSellAdapter {
   address augustusSwapper;
   address poolProvider;
   address vault721;
+  address oracleRelayer;
   address exitActions;
   address collateralJoinFactory;
   address coinJoin;
@@ -35,6 +36,7 @@ interface IParaswapSellAdapter {
 
   error InvalidAugustus();
   error InsufficientBalance();
+  error IncorrectAmount();
   error OffsetOutOfRange();
   error OverSell();
   error UnderBuy();
@@ -79,6 +81,36 @@ interface IParaswapSellAdapter {
     uint256 _safeId,
     bytes32 _cType
   ) external;
+
+  /**
+   * @param _cType collateral type of OpenDollar NFV/CDP
+   */
+  function getCData(bytes32 _cType) external view returns (uint256 _accumulatedRate, uint256 _safetyPrice);
+
+  /**
+   * @param _cType collateral type of OpenDollar NFV/CDP
+   */
+  function getSafetyRatio(bytes32 _cType) external returns (uint256 _safetyCRatio);
+
+  /**
+   * @param _cType collateral type of OpenDollar NFV/CDP
+   * @param _initCapital initial collateral deposit
+   */
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital
+  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt);
+
+  /**
+   * @param _cType collateral type of OpenDollar NFV/CDP
+   * @param _initCapital initial collateral deposit
+   * @param _percentageBuffer percentage above cType safetyRatio
+   */
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital,
+    uint256 _percentageBuffer
+  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt);
 
   /**
    * @param _asset token

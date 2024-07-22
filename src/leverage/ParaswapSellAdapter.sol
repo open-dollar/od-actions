@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import 'forge-std/Test.sol';
+
 import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadata.sol';
 import {FlashLoanSimpleReceiverBase} from '@aave-core-v3/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol';
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
@@ -12,25 +13,25 @@ import {
   ISAFEEngine,
   IODSafeManager,
   ICollateralJoinFactory,
+  IOracleRelayer,
   IVault721
 } from '@opendollar/libraries/OpenDollarV1Arbitrum.sol';
+import {Math} from '@opendollar/libraries/Math.sol';
 import {IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
-import {ExitActions} from 'src/leverage/ExitActions.sol';
+import {IExitActions} from 'src/leverage/interfaces/IExitActions.sol';
 
 /**
  * TODO:
  * - add access control
  * - add modifiable contract for var updates
  * - add withdraw function
- * - enforce max slippage rate
- * - remove Test inheritance
  */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
   using PercentageMath for uint256;
+  using Math for uint256;
 
   uint256 public constant MAX_SLIPPAGE_PERCENT = 0.03e4; // 3%
-  uint256 public constant PREMIUM = 500_000_000_000;
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
   ODProxy public immutable PS_ADAPTER_ODPROXY;
@@ -38,9 +39,9 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   IParaswapAugustus public augustus;
 
   IODSafeManager public safeManager;
+  IOracleRelayer public oracleRelayer;
   ICollateralJoinFactory public collateralJoinFactory;
-  // todo make interface for this
-  ExitActions public exitActions;
+  IExitActions public exitActions;
   address public coinJoin;
 
   mapping(address => mapping(address => uint256)) internal _deposits;
@@ -52,10 +53,33 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     augustus = IParaswapAugustus(_initSellAdapter.augustusSwapper);
     IVault721 _v721 = IVault721(_initSellAdapter.vault721);
     safeManager = IODSafeManager(_v721.safeManager());
-    exitActions = ExitActions(_initSellAdapter.exitActions);
+    oracleRelayer = IOracleRelayer(_initSellAdapter.oracleRelayer);
+    exitActions = IExitActions(_initSellAdapter.exitActions);
     collateralJoinFactory = ICollateralJoinFactory(_initSellAdapter.collateralJoinFactory);
     coinJoin = _initSellAdapter.coinJoin;
     PS_ADAPTER_ODPROXY = ODProxy(_v721.build(address(this)));
+  }
+
+  /// @dev get accumulated rate and safety price for a cType
+  function getCData(bytes32 _cType) external view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
+    (_accumulatedRate, _safetyPrice) = _getCData(_cType);
+  }
+
+  /// @dev get max collateral loan amount and max leveraged debt
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital
+  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+    (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, 0);
+  }
+
+  /// @dev get collateral loan amount and leveraged debt with percentage buffer
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital,
+    uint256 _percentageBuffer
+  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+    (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, _percentageBuffer);
   }
 
   /// @dev deposit asset for msg.sender
@@ -124,35 +148,33 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   ) external override returns (bool) {
     (uint256 _minDstAmount, SellParams memory _sellParams, bytes memory _payload) =
       abi.decode(params, (uint256, SellParams, bytes));
+    address _fromToken = _sellParams.fromToken;
 
-    emit log_named_uint('RETH BAL AQUIRE LOAN', IERC20Metadata(_sellParams.toToken).balanceOf(address(this)));
-    emit log_named_uint('OD   BAL BEFORE LOCK', IERC20Metadata(_sellParams.fromToken).balanceOf(address(this)));
-
-    uint256 _beforebalance = IERC20Metadata(_sellParams.fromToken).balanceOf(address(this));
+    uint256 _beforebalance = IERC20Metadata(_fromToken).balanceOf(address(this));
     uint256 _sellAmount = _sellParams.sellAmount;
 
     _executeFromProxy(_payload);
-
-    emit log_named_uint('OD   BAL AFTER  LOCK', IERC20Metadata(_sellParams.fromToken).balanceOf(address(this)));
-
-    // todo add error msg
-    // if (_sellAmount != OD.balanceOf(address(this)) - _beforebalance) revert();
+    if (_sellAmount != IERC20Metadata(_fromToken).balanceOf(address(this)) - _beforebalance) revert IncorrectAmount();
 
     // swap debt to collateral
     _sellOnParaSwap(
       _sellParams.offset,
       _sellParams.swapCalldata,
-      IERC20Metadata(_sellParams.fromToken),
+      IERC20Metadata(_fromToken),
       IERC20Metadata(_sellParams.toToken),
       _sellAmount,
       _minDstAmount
     );
-    emit log_named_uint('RETH BAL POST   SWAP', IERC20Metadata(_sellParams.toToken).balanceOf(address(this)));
-    emit log_named_uint('OD   BAL AFTER  SWAP', IERC20Metadata(_sellParams.fromToken).balanceOf(address(this)));
 
     uint256 _payBack = amount + premium;
     IERC20Metadata(asset).approve(address(POOL), _payBack);
     return true;
+  }
+
+  /// @dev get safetyRatio as fixed-point percent
+  function getSafetyRatio(bytes32 _cType) public view returns (uint256 _safetyCRatio) {
+    IOracleRelayer.OracleRelayerCollateralParams memory _cParams = oracleRelayer.cParams(_cType);
+    _safetyCRatio = _cParams.safetyCRatio / 1e25;
   }
 
   /// @dev execute payload with delegate call via proxy for address(this)
@@ -169,7 +191,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   /// @dev transfer asset to this owner
   function _withdraw(address _account, address _asset, uint256 _amount) internal {
     uint256 _balance = _deposits[_account][_asset];
-    if (_balance < _amount) revert();
+    if (_balance < _amount) revert InsufficientBalance();
     _deposits[_account][_asset] = _balance - _amount;
     IERC20Metadata(_asset).transferFrom(address(this), _account, _amount);
   }
@@ -212,14 +234,30 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     if (_sellAmount < _amountSold) revert OverSell();
 
     _amountReceived = _toToken.balanceOf(address(this)) - _initBalToToken;
-    if (_amountReceived < _minDstAmount) revert UnderBuy();
+    uint256 _amountAccepted = _minDstAmount - _minDstAmount.percentMul(MAX_SLIPPAGE_PERCENT);
+    if (_amountReceived < _amountAccepted) revert UnderBuy();
     emit Swapped(address(_fromToken), address(_toToken), _amountSold, _amountReceived);
   }
 
-  /// @dev get accumulated rate and safety price for a cType
+  /// @dev get accumulated rate and safety price for a cType from the SAFEEngine
   function _getCData(bytes32 _cType) internal view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
     ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = ISAFEEngine(safeManager.safeEngine()).cData(_cType);
     _accumulatedRate = _safeEngCData.accumulatedRate;
     _safetyPrice = _safeEngCData.safetyPrice;
+  }
+
+  /// @dev calculate collateral loan amount and leveraged debt
+  function _getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital,
+    uint256 _percentageBuffer
+  ) internal returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+    (uint256 _accumulatedRate, uint256 _safetyPrice) = _getCData(_cType);
+
+    uint256 _percent = getSafetyRatio(_cType) + _percentageBuffer;
+    uint256 _multiplier = 1000 / (105 - (10_000 / (_percent)));
+
+    _cTypeLoanAmount = (_initCapital * _multiplier / 10) - _initCapital;
+    _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 10;
   }
 }

@@ -29,7 +29,7 @@ if (args.length) {
 }
 
 
-async function getSwapRoute(_fromToken, _fromDecimals, _toToken, _toDecimals, _sellAmount, _caller, _num) {
+async function getSwapRoute(_fromToken, _fromDecimals, _toToken, _toDecimals, _sellAmount, _caller) {
 	// console.log(`\n ROUTE \n`);
 
 	const priceRoute = await paraSwapMin.swap.getRate({
@@ -42,30 +42,23 @@ async function getSwapRoute(_fromToken, _fromDecimals, _toToken, _toDecimals, _s
 		side: SwapSide.SELL,
 	});
 
-	console.log(`\n${_num}\nSRC: ${priceRoute.srcUSD}\nDST: ${priceRoute.destUSD}\nDIF: ${priceRoute.srcUSD - priceRoute.destUSD}`);
-	console.log(`\n${_num}\nSRC: ${priceRoute.srcAmount}\nDST: ${priceRoute.destAmount}\n\n`);
+	// console.log(`\n${_num}\nSRC: ${priceRoute.srcUSD}\nDST: ${priceRoute.destUSD}\nDIF: ${(priceRoute.srcUSD - priceRoute.destUSD).toFixed(2)}`);
+	// console.log(`\nSRC: ${priceRoute.srcAmount}\nDST: ${priceRoute.destAmount}\n\n`);
 	// console.log(JSON.stringify(priceRoute, null, 3));
 	// console.log(`\n TRANSACTION \n`);
 
-	const txParams = await paraSwapMin.swap.buildTx(
-		{
-			srcToken: priceRoute.srcToken,
-			destToken: priceRoute.destToken,
-			srcAmount: priceRoute.srcAmount,
-			destAmount: priceRoute.destAmount,
-			priceRoute,
-			userAddress: _caller,
-			ignoreChecks: true
-		}     
-	);
-
-	// console.log(JSON.stringify(txParams, null, 3));
-
-	// process.stdout.write(txParams.data);
+	process.stdout.write(priceRoute.destAmount);
 }
 
-getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "995173078713564046713", CALLER, "1");
-getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "4975865393567820237063", CALLER, "2");
-getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "9951730787135640477624", CALLER, "3");
-getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "49758653935678202402106", CALLER, "4");
-getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "99517307871356404804213", CALLER, "5");
+getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, SELL_AMOUNT, CALLER);
+
+// // init 2 ether
+// getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "18154557608573679626873", CALLER, "1");
+// // init 4 ether
+// getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "36309115217147359253746", CALLER, "2");
+// // init 5 ether
+// getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "45386394021434199067186", CALLER, "3");
+// // init 6 ether
+// getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "54463672825721038880622", CALLER, "4");
+// // init 8 ether
+// getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, "72618230434294718507496", CALLER, "5");

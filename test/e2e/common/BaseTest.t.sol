@@ -13,12 +13,20 @@ contract BaseTest is Test {
     IParaswapSellAdapter(_adapter).deposit(_asset, _amount);
   }
 
+  function _getDstAmountUserInput(
+    address _fromToken,
+    address _toToken,
+    uint256 _amount
+  ) internal returns (uint256 _dstAmount) {
+    _dstAmount = uint256(bytes32(_getDstAmount(_fromToken, 18, _toToken, 18, _amount, USER)));
+  }
+
   function _getSingleUserInput(
     address _fromToken,
     address _toToken
   ) internal returns (IParaswapSellAdapter.SellParams memory _sellParams) {
     deal(_fromToken, USER, SELL_AMOUNT);
-    bytes memory _result = _getSwapRoute(_fromToken, 18, _toToken, 18, SELL_AMOUNT, USER);
+    bytes memory _result = _getSwapTransaction(_fromToken, 18, _toToken, 18, SELL_AMOUNT, USER);
     _sellParams = IParaswapSellAdapter.SellParams(0, _result, _fromToken, _toToken, SELL_AMOUNT);
   }
 
@@ -36,7 +44,7 @@ contract BaseTest is Test {
   ) internal returns (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) {
     deal(_fromToken, USER, _amount);
     _dstAmount = uint256(bytes32(_getDstAmount(_fromToken, 18, _toToken, 18, _amount, USER)));
-    bytes memory _result = _getSwapRoute(_fromToken, 18, _toToken, 18, _amount, USER);
+    bytes memory _result = _getSwapTransaction(_fromToken, 18, _toToken, 18, _amount, USER);
     _sellParams = IParaswapSellAdapter.SellParams(0, _result, _fromToken, _toToken, _amount);
   }
 
@@ -61,7 +69,7 @@ contract BaseTest is Test {
     _result = vm.ffi(inputs);
   }
 
-  function _getSwapRoute(
+  function _getSwapTransaction(
     address _fromToken,
     uint256 _fromDecimals,
     address _toToken,

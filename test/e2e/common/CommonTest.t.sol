@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+import {Strings} from '@openzeppelin/utils/Strings.sol';
 import {Common, TKN} from '@opendollar/test/e2e/Common.t.sol';
 import {Math} from '@opendollar/libraries/Math.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
@@ -13,6 +14,7 @@ import {BaseTest} from 'test/e2e/common/BaseTest.t.sol';
 
 contract CommonTest is Common, BaseTest {
   using Math for uint256;
+  using Strings for uint256;
 
   uint256 public constant DEPOSIT = 10_000 ether;
   uint256 public constant MINT = DEPOSIT * 2 / 3;
@@ -176,5 +178,24 @@ contract CommonTest is Common, BaseTest {
     ISAFEEngine.SAFE memory _safeData = safeEngine.safes(_cType, _safe);
     _collateral = _safeData.lockedCollateral;
     _debt = _safeData.generatedDebt;
+  }
+
+  function _floatingPointWad(uint256 _num) internal pure returns (string memory _formatNum) {
+    uint256 _left = _num / 1e18;
+    uint256 _expLeft = _left * 1e18;
+    uint256 _right = _num - _expLeft;
+
+    return string.concat(_left.toString(), '.', _right.toString());
+  }
+
+  function _floatingPointWad(uint256 _num, uint256 _decimalDivider) internal pure returns (string memory _formatNum) {
+    uint256 _left = _num / 1e18;
+    uint256 _expLeft = _left * 1e18;
+    uint256 _expRight = _num - _expLeft;
+    uint256 _right;
+    if (_decimalDivider > 0 && _decimalDivider < 1e18 + 1) _right = _expRight / _decimalDivider;
+    else _right = _expRight;
+
+    return string.concat(_left.toString(), '.', _right.toString());
   }
 }

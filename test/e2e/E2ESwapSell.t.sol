@@ -18,6 +18,7 @@ contract E2ESwapSell is BaseTest {
       PARASWAP_AUGUSTUS_SWAPPER,
       AAVE_POOL_ADDRESS_PROVIDER,
       address(VAULT721),
+      address(0x001),
       address(0x123),
       address(0x456),
       address(0x789)
