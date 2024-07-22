@@ -90,11 +90,3 @@ contract BaseTest is Test {
     _result = vm.ffi(inputs);
   }
 }
-
-// function _borrow(address _adapter, address _asset, uint256 _amount) internal {
-//   _adapter.borrow(_asset, _amount, 2, 0, USER);
-// }
-
-// function _withdraw(address _adapter, address _asset, uint256 _amount) internal {
-//   _adapter.withdraw(_asset, _amount, USER);
-// }

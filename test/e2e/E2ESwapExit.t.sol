@@ -74,63 +74,38 @@ contract E2ESwapExit is CommonTest {
     vm.stopPrank();
   }
 
-  /// @notice deposit 0.00001 Ether RETH/WSTETH
-  function testRequestFlashloan0RETH() public {
+  /**
+   * @dev DO NOT Fuzz Test w/ ParaSwap SDK calls
+   */
+
+  /// @notice deposit 0.00001 Ether (RETH)
+  function testRequestFlashloan0() public {
     _requestFlashLoan(0.00001 ether, RETH);
   }
 
-  function testRequestFlashloan0WSTETH() public {
-    _requestFlashLoan(0.00001 ether, WSTETH);
-  }
-
-  /// @notice deposit 0.1 Ether RETH/WSTETH
-  function testRequestFlashloan1RETH() public {
-    _requestFlashLoan(0.1 ether, RETH);
-  }
-
-  function testRequestFlashloan1WSTETH() public {
+  /// @notice deposit 0.1 Ether (WSTETH)
+  function testRequestFlashloan1() public {
     _requestFlashLoan(0.1 ether, WSTETH);
   }
 
-  /// @notice deposit 2 Ether RETH/WSTETH
-  function testRequestFlashloan2RETH() public {
+  /// @notice deposit 2 Ether (RETH)
+  function testRequestFlashloan2() public {
     _requestFlashLoan(2 ether, RETH);
   }
 
-  function testRequestFlashloan2WSTETH() public {
-    _requestFlashLoan(2 ether, WSTETH);
-  }
-
-  /// @notice deposit 4 Ether RETH/WSTETH
-  function testRequestFlashloan3RETH() public {
-    _requestFlashLoan(4 ether, RETH);
-  }
-
-  function testRequestFlashloan3WSTETH() public {
+  /// @notice deposit 4 Ether (WSTETH)
+  function testRequestFlashloan3() public {
     _requestFlashLoan(4 ether, WSTETH);
   }
 
-  /// @notice deposit 8 Ether RETH/WSTETH
-  function testRequestFlashloan4RETH() public {
+  /// @notice deposit 8 Ether (RETH)
+  function testRequestFlashloan4() public {
     _requestFlashLoan(8 ether, RETH);
   }
 
-  function testRequestFlashloan4WSTETH() public {
-    _requestFlashLoan(8 ether, WSTETH);
-  }
-
-  /// @notice deposit 16 Ether RETH/WSTETH
-  function testRequestFlashloan5RETH() public {
-    _requestFlashLoan(16 ether, RETH);
-  }
-
-  function testRequestFlashloan5WSTETH() public {
+  /// @notice deposit 16 Ether (WSTETH)
+  function testRequestFlashloan5() public {
     _requestFlashLoan(16 ether, WSTETH);
-  }
-
-  /// @notice deposit 32 Ether RETH
-  function testRequestFlashloan6RETH() public {
-    _requestFlashLoan(32 ether, RETH);
   }
 
   function _requestFlashLoanAndAssertValues(uint256 _initCapital, bytes32 _cType) internal {
@@ -197,6 +172,8 @@ contract E2ESwapExit is CommonTest {
   function _logFinalValues(uint256 _deposit, bytes32 _cType) internal {
     (uint256 _c, uint256 _d) = _getSAFE(_cType, userNFV.safeHandler);
     emit log_named_bytes32('COLLATERAL      TYPE', _cType);
+    if (_cType == RETH) emit log_named_string('RETH   ORACLE  PRICE', _floatingPointWad(_readCTypePrice(RETH)));
+    if (_cType == WSTETH) emit log_named_string('WSTETH ORACLE  PRICE', _floatingPointWad(_readCTypePrice(WSTETH)));
     emit log_named_string('--------------------', '');
     emit log_named_string('ORIGINAL        DEBT', '0');
     emit log_named_string('FINAL           DEBT', _floatingPointWad(_d));

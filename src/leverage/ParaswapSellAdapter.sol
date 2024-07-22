@@ -7,6 +7,8 @@ import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAd
 import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
+import {Modifiable} from '@opendollar/contracts/utils/Modifiable.sol';
+import {Authorizable} from '@opendollar/contracts/utils/Authorizable.sol';
 import {
   ISAFEEngine,
   IODSafeManager,
@@ -14,6 +16,8 @@ import {
   IOracleRelayer,
   IVault721
 } from '@opendollar/libraries/OpenDollarV1Arbitrum.sol';
+import {Assertions} from '@opendollar/libraries/Assertions.sol';
+import {Encoding} from '@opendollar/libraries/Encoding.sol';
 import {Math} from '@opendollar/libraries/Math.sol';
 import {IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
@@ -23,11 +27,12 @@ import {IExitActions} from 'src/leverage/interfaces/IExitActions.sol';
  * TODO:
  * - add access control
  * - add modifiable contract for var updates
- * - add withdraw function
  */
-contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter {
+contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Modifiable {
   using PercentageMath for uint256;
   using Math for uint256;
+  using Assertions for address;
+  using Encoding for bytes;
 
   uint256 public constant MAX_SLIPPAGE_PERCENT = 0.03e4; // 3%
 
@@ -46,6 +51,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
 
   constructor(InitSellAdapter memory _initSellAdapter)
     FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_initSellAdapter.poolProvider))
+    Authorizable(msg.sender)
   {
     AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_initSellAdapter.augustusRegistry);
     augustus = IParaswapAugustus(_initSellAdapter.augustusSwapper);
@@ -67,7 +73,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   function getLeveragedDebt(
     bytes32 _cType,
     uint256 _initCapital
-  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+  ) external view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
     (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, 0);
   }
 
@@ -76,7 +82,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     bytes32 _cType,
     uint256 _initCapital,
     uint256 _percentageBuffer
-  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+  ) external view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
     (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, _percentageBuffer);
   }
 
@@ -88,6 +94,10 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   /// @dev deposit asset for account
   function deposit(address _onBehalfOf, address _asset, uint256 _amount) external {
     _deposit(_onBehalfOf, _asset, _amount);
+  }
+
+  function withdraw(address _asset, uint256 _amount) external {
+    _withdraw(msg.sender, _asset, _amount);
   }
 
   /// @dev exact-in sell swap on ParaSwap
@@ -249,7 +259,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     bytes32 _cType,
     uint256 _initCapital,
     uint256 _percentageBuffer
-  ) internal returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+  ) internal view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
     (uint256 _accumulatedRate, uint256 _safetyPrice) = _getCData(_cType);
 
     uint256 _percent = getSafetyRatio(_cType) + _percentageBuffer;
@@ -257,5 +267,26 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
 
     _cTypeLoanAmount = (_initCapital * _multiplier / 10) - _initCapital;
     _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 10;
+  }
+
+  /// @notice overridden function from Modifiable to modify parameters
+  function _modifyParameters(bytes32 _param, bytes memory _data) internal override {
+    address _addr = _data.toAddress();
+
+    if (_param == 'augustus') {
+      augustus = IParaswapAugustus(_addr.assertNonNull());
+    } else if (_param == 'safeManager') {
+      safeManager = IODSafeManager(_addr.assertNonNull());
+    } else if (_param == 'oracleRelayer') {
+      oracleRelayer = IOracleRelayer(_addr.assertNonNull());
+    } else if (_param == 'collateralJoinFactory') {
+      collateralJoinFactory = ICollateralJoinFactory(_addr.assertNonNull());
+    } else if (_param == 'exitActions') {
+      exitActions = IExitActions(_addr.assertNonNull());
+    } else if (_param == 'coinJoin') {
+      coinJoin = _addr.assertNonNull();
+    } else {
+      revert UnrecognizedParam();
+    }
   }
 }

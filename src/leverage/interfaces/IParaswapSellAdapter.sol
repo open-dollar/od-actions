@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPool} from '@aave-core-v3/contracts/interfaces/IPool.sol';
+import {IModifiable} from '@opendollar/interfaces/utils/IModifiable.sol';
 
 /**
  * _augustusRegistry address of Paraswap AugustusRegistry
@@ -24,7 +25,7 @@ struct InitSellAdapter {
   address coinJoin;
 }
 
-interface IParaswapSellAdapter {
+interface IParaswapSellAdapter is IModifiable {
   /**
    * @dev emitted after a sell of an asset is made
    * @param _fromAsset address of the asset sold
