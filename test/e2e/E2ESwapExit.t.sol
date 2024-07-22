@@ -160,17 +160,13 @@ contract E2ESwapExit is CommonTest {
     uint256 _swapResult = _getDstAmountUserInput(OD_ADDR, _cTypeAddr, _leveragedDebt);
 
     uint256 _accumulator;
-    uint256 _callNumber;
     while (_loanAmount > _swapResult) {
       _accumulator += 3;
       (_loanAmount, _leveragedDebt) = sellAdapter.getLeveragedDebt(_cType, _initCapital, _accumulator);
 
       /// @notice ParaSwap SDK call: get dstAmount from route
       _swapResult = _getDstAmountUserInput(OD_ADDR, _cTypeAddr, _leveragedDebt);
-
-      _callNumber += 1;
     }
-    emit log_named_uint('PS-SDK  getDstAmount', _callNumber);
 
     /// @notice ParaSwap SDK call: get transaction
     (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =

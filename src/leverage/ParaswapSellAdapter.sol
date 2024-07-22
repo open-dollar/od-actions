@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import 'forge-std/Test.sol';
-
 import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadata.sol';
 import {FlashLoanSimpleReceiverBase} from '@aave-core-v3/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol';
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
@@ -27,7 +25,7 @@ import {IExitActions} from 'src/leverage/interfaces/IExitActions.sol';
  * - add modifiable contract for var updates
  * - add withdraw function
  */
-contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
+contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter {
   using PercentageMath for uint256;
   using Math for uint256;
 
@@ -65,7 +63,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     (_accumulatedRate, _safetyPrice) = _getCData(_cType);
   }
 
-  /// @dev get max collateral loan amount and max leveraged debt
+  /// @dev get max collateral loan and max leveraged debt
   function getLeveragedDebt(
     bytes32 _cType,
     uint256 _initCapital
@@ -73,7 +71,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, 0);
   }
 
-  /// @dev get collateral loan amount and leveraged debt with percentage buffer
+  /// @dev get collateral loan and leveraged debt with percentage buffer
   function getLeveragedDebt(
     bytes32 _cType,
     uint256 _initCapital,
