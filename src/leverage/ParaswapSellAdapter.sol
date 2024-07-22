@@ -23,11 +23,6 @@ import {IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/interfaces/IPa
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
 import {IExitActions} from 'src/leverage/interfaces/IExitActions.sol';
 
-/**
- * TODO:
- * - add access control
- * - add modifiable contract for var updates
- */
 contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Modifiable {
   using PercentageMath for uint256;
   using Math for uint256;

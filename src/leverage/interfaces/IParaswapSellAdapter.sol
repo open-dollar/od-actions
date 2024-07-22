@@ -10,6 +10,7 @@ import {IModifiable} from '@opendollar/interfaces/utils/IModifiable.sol';
  * _augustusSwapper address of Paraswap AugustusSwapper
  * _poolProvider address of Aave PoolAddressProvider
  * _vault721 address of OpenDollar Vault721
+ * _oracleRelayer address of OpenDollar OracleRelayer
  * _exitActions address of OpenDollar ExitActions
  * _collateralJoinFactory address of OpenDollar CollateralJoinFactory
  * _coinJoin address of OpenDollar CoinJoin
