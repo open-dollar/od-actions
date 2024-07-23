@@ -9,7 +9,6 @@ import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
 import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
 import {DelayedOracleForTest} from '@opendollar/test/mocks/DelayedOracleForTest.sol';
 import {ExitActions} from 'src/leverage/ExitActions.sol';
-import {LeverageCalculator} from 'src/leverage/LeverageCalculator.sol';
 import {BaseTest} from 'test/e2e/common/BaseTest.t.sol';
 
 contract CommonTest is Common, BaseTest {
@@ -28,13 +27,11 @@ contract CommonTest is Common, BaseTest {
   IVault721.NFVState public aliceNFV;
 
   ExitActions public exitActions;
-  LeverageCalculator public leverageCalculator;
 
   function setUp() public virtual override {
     _isCastTokens = true;
     super.setUp();
     exitActions = new ExitActions();
-    leverageCalculator = new LeverageCalculator(address(vault721));
     token = address(collateral[TKN]);
   }
 
