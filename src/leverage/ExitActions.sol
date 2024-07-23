@@ -133,7 +133,6 @@ contract ExitActions is BasicActions {
     ODSafeManager.SAFEData memory _safeInfo = ODSafeManager(_manager).safeData(_safeId);
     // takes token amount from user's wallet and joins into the safeEngine
     _joinCollateral(_collateralJoin, _safeInfo.safeHandler, _collateralAmount);
-
     int256 _deltaDebt = _getGeneratedDeltaDebt(_safeEngine, _safeInfo.collateralType, _safeInfo.safeHandler, _deltaWad);
     // locks token amount into the SAFE and generates debt
     _modifySAFECollateralization(_manager, _safeId, _collateralAmount.toInt(), _deltaDebt, false);

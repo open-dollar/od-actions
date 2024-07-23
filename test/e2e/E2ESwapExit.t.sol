@@ -78,36 +78,61 @@ contract E2ESwapExit is CommonTest {
    * @dev DO NOT Fuzz Test w/ ParaSwap SDK calls
    */
 
-  /// @notice deposit 0.00001 Ether (RETH)
-  function testRequestFlashloan0() public {
-    _requestFlashLoan(0.00001 ether, RETH);
+  /// @notice deposit 0.00001 Ether
+  function testRequestFlashloan0RETH() public {
+    _requestFlashLoanAndAssertValues(0.00001 ether, RETH);
   }
 
-  /// @notice deposit 0.1 Ether (WSTETH)
-  function testRequestFlashloan1() public {
-    _requestFlashLoan(0.1 ether, WSTETH);
+  function testRequestFlashloan0WSTETH() public {
+    _requestFlashLoanAndAssertValues(0.00001 ether, WSTETH);
   }
 
-  /// @notice deposit 2 Ether (RETH)
-  function testRequestFlashloan2() public {
-    _requestFlashLoan(2 ether, RETH);
+  /// @notice deposit 0.1 Ether
+  function testRequestFlashloan1RETH() public {
+    _requestFlashLoanAndAssertValues(0.1 ether, RETH);
   }
 
-  /// @notice deposit 4 Ether (WSTETH)
-  function testRequestFlashloan3() public {
-    _requestFlashLoan(4 ether, WSTETH);
+  function testRequestFlashloan1WSTETH() public {
+    _requestFlashLoanAndAssertValues(0.1 ether, WSTETH);
   }
 
-  /// @notice deposit 8 Ether (RETH)
-  function testRequestFlashloan4() public {
-    _requestFlashLoan(8 ether, RETH);
+  /// @notice deposit 2 Ether
+  function testRequestFlashloan2RETH() public {
+    _requestFlashLoanAndAssertValues(2 ether, RETH);
   }
 
-  /// @notice deposit 16 Ether (WSTETH)
-  function testRequestFlashloan5() public {
-    _requestFlashLoan(16 ether, WSTETH);
+  function testRequestFlashloan2WSTETH() public {
+    _requestFlashLoanAndAssertValues(2 ether, WSTETH);
   }
 
+  /// @notice deposit 4 Ether
+  function testRequestFlashloan3RETH() public {
+    _requestFlashLoanAndAssertValues(4 ether, RETH);
+  }
+
+  function testRequestFlashloan3WSTETH() public {
+    _requestFlashLoanAndAssertValues(4 ether, WSTETH);
+  }
+
+  /// @notice deposit 8 Ether
+  function testRequestFlashloan4RETH() public {
+    _requestFlashLoanAndAssertValues(8 ether, RETH);
+  }
+
+  function testRequestFlashloan4WSTETH() public {
+    _requestFlashLoanAndAssertValues(8 ether, WSTETH);
+  }
+
+  /// @notice deposit 16 Ether
+  function testRequestFlashloan5RETH() public {
+    _requestFlashLoanAndAssertValues(16 ether, RETH);
+  }
+
+  function testRequestFlashloan5WSTETH() public {
+    _requestFlashLoanAndAssertValues(16 ether, WSTETH);
+  }
+
+  // todo test Arb, test each ctype per test
   function _requestFlashLoanAndAssertValues(uint256 _initCapital, bytes32 _cType) internal {
     assertEq(collateral[_cType].balanceOf(sellAdapterAddr), 0);
     assertEq(systemCoin.balanceOf(sellAdapterAddr), 0);
@@ -154,7 +179,7 @@ contract E2ESwapExit is CommonTest {
     /// @notice USER deposits initialCollateral in sellAdapterProxy and executes flashloan leverage
     vm.startPrank(USER);
     IERC20Metadata(_cTypeAddr).approve(sellAdapterAddr, _initCapital);
-    sellAdapter.deposit(_cTypeAddr, _initCapital);
+    // sellAdapter.deposit(_cTypeAddr, _initCapital);
     sellAdapter.requestFlashloan(_sellParams, _initCapital, _loanAmount, _dstAmount, vaults[userProxy], _cType);
     vm.stopPrank();
 
@@ -180,6 +205,7 @@ contract E2ESwapExit is CommonTest {
     emit log_named_string('--------------------', '');
     emit log_named_string('ORIGINAL  COLLATERAL', _floatingPointWad(_deposit));
     emit log_named_string('FINAL     COLLATERAL', _floatingPointWad(_c));
+    emit log_named_uint('REMAINING COLLATERAL', collateral[_cType].balanceOf(sellAdapterAddr));
     emit log_named_string('--------------------', '');
     uint256 divRes = _c * 100 / _deposit;
     emit log_named_string('MULTIPLIER      RATE', _floatingPointWad((divRes / 10) * 1e17, 1e17));

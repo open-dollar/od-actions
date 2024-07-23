@@ -10,7 +10,7 @@ contract BaseTest is Test {
   function _supplyAndDeposit(address _adapter, address _asset, uint256 _amount) internal {
     deal(_asset, msg.sender, _amount);
     IERC20Metadata(_asset).approve(address(_adapter), _amount);
-    IParaswapSellAdapter(_adapter).deposit(_asset, _amount);
+    IERC20Metadata(_asset).transferFrom(msg.sender, address(this), _amount);
   }
 
   function _getDstAmountUserInput(

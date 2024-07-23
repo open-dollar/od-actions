@@ -43,6 +43,7 @@ interface IParaswapSellAdapter is IModifiable {
   error OverSell();
   error UnderBuy();
   error ZeroValue();
+  error WrongAsset();
 
   /**
    * @param _offset offset of fromAmount in Augustus calldata if it should be overwritten, otherwise 0
@@ -113,17 +114,4 @@ interface IParaswapSellAdapter is IModifiable {
     uint256 _initCapital,
     uint256 _percentageBuffer
   ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt);
-
-  /**
-   * @param _asset token
-   * @param _amount to deposit
-   */
-  function deposit(address _asset, uint256 _amount) external;
-
-  /**
-   * @param _onBehalfOf account to receive balance
-   * @param _asset token
-   * @param _amount to deposit
-   */
-  function deposit(address _onBehalfOf, address _asset, uint256 _amount) external;
 }

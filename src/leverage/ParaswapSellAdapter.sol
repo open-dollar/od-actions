@@ -13,6 +13,7 @@ import {
   ISAFEEngine,
   IODSafeManager,
   ICollateralJoinFactory,
+  ICollateralJoin,
   IOracleRelayer,
   IVault721
 } from '@opendollar/libraries/OpenDollarV1Arbitrum.sol';
@@ -41,8 +42,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
   ICollateralJoinFactory public collateralJoinFactory;
   IExitActions public exitActions;
   address public coinJoin;
-
-  mapping(address => mapping(address => uint256)) internal _deposits;
 
   constructor(InitSellAdapter memory _initSellAdapter)
     FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_initSellAdapter.poolProvider))
@@ -81,20 +80,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, _percentageBuffer);
   }
 
-  /// @dev deposit asset for msg.sender
-  function deposit(address _asset, uint256 _amount) external {
-    _deposit(msg.sender, _asset, _amount);
-  }
-
-  /// @dev deposit asset for account
-  function deposit(address _onBehalfOf, address _asset, uint256 _amount) external {
-    _deposit(_onBehalfOf, _asset, _amount);
-  }
-
-  function withdraw(address _asset, uint256 _amount) external {
-    _withdraw(msg.sender, _asset, _amount);
-  }
-
   /// @dev exact-in sell swap on ParaSwap
   function sellOnParaSwap(
     SellParams memory _sellParams,
@@ -119,12 +104,17 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     uint256 _safeId,
     bytes32 _cType
   ) external {
+    address _collateralJoin = collateralJoinFactory.collateralJoins(_cType);
+
+    // transfer initial collateral deposit
+    ICollateralJoin(_collateralJoin).collateral().transferFrom(msg.sender, address(this), _initCollateral);
+
     // deposit collateral, generate debt
     bytes memory _payload = abi.encodeWithSelector(
       exitActions.lockTokenCollateralAndGenerateDebtToAccount.selector,
       address(this),
       address(safeManager),
-      address(collateralJoinFactory.collateralJoins(_cType)),
+      _collateralJoin,
       coinJoin,
       _safeId,
       _initCollateral + _collateralLoan,
@@ -136,7 +126,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       receiverAddress: address(this),
       asset: address(_sellParams.toToken),
       amount: _collateralLoan,
-      params: abi.encode(_minDstAmount, _sellParams, _payload),
+      params: abi.encode(_minDstAmount, _safeId, _collateralJoin, _sellParams, _payload),
       referralCode: uint16(block.number)
     });
   }
@@ -149,27 +139,38 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     address, /* initiator */
     bytes calldata params
   ) external override returns (bool) {
-    (uint256 _minDstAmount, SellParams memory _sellParams, bytes memory _payload) =
-      abi.decode(params, (uint256, SellParams, bytes));
-    address _fromToken = _sellParams.fromToken;
+    (
+      uint256 _minDstAmount,
+      uint256 _safeId,
+      address _collateralJoin,
+      SellParams memory _sellParams,
+      bytes memory _payload
+    ) = abi.decode(params, (uint256, uint256, address, SellParams, bytes));
 
-    uint256 _beforebalance = IERC20Metadata(_fromToken).balanceOf(address(this));
-    uint256 _sellAmount = _sellParams.sellAmount;
+    if (asset != _sellParams.toToken) revert WrongAsset();
+    IERC20Metadata _toToken = IERC20Metadata(_sellParams.toToken);
+    IERC20Metadata _fromToken = IERC20Metadata(_sellParams.fromToken);
 
-    _executeFromProxy(_payload);
-    if (_sellAmount != IERC20Metadata(_fromToken).balanceOf(address(this)) - _beforebalance) revert IncorrectAmount();
+    {
+      uint256 _beforebalance = _fromToken.balanceOf(address(this));
+      uint256 _sellAmount = _sellParams.sellAmount;
 
-    // swap debt to collateral
-    _sellOnParaSwap(
-      _sellParams.offset,
-      _sellParams.swapCalldata,
-      IERC20Metadata(_fromToken),
-      IERC20Metadata(_sellParams.toToken),
-      _sellAmount,
-      _minDstAmount
-    );
+      _executeFromProxy(_payload);
+
+      if (_sellAmount != _fromToken.balanceOf(address(this)) - _beforebalance) revert IncorrectAmount();
+      // swap debt to collateral
+      _sellOnParaSwap(_sellParams.offset, _sellParams.swapCalldata, _fromToken, _toToken, _sellAmount, _minDstAmount);
+    }
 
     uint256 _payBack = amount + premium;
+    uint256 _remainder = _toToken.balanceOf(address(this)) - _payBack;
+    if (_remainder > 0) {
+      bytes memory _returnPayload = abi.encodeWithSelector(
+        exitActions.lockTokenCollateral.selector, address(safeManager), _collateralJoin, _safeId, _remainder
+      );
+      _executeFromProxy(_returnPayload);
+    }
+
     IERC20Metadata(asset).approve(address(POOL), _payBack);
     return true;
   }
@@ -180,23 +181,31 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     _safetyCRatio = _cParams.safetyCRatio / 1e25;
   }
 
+  /// @dev get accumulated rate and safety price for a cType from the SAFEEngine
+  function _getCData(bytes32 _cType) internal view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
+    ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = ISAFEEngine(safeManager.safeEngine()).cData(_cType);
+    _accumulatedRate = _safeEngCData.accumulatedRate;
+    _safetyPrice = _safeEngCData.safetyPrice;
+  }
+
+  /// @dev calculate collateral loan amount and leveraged debt
+  function _getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital,
+    uint256 _percentageBuffer
+  ) internal view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+    (uint256 _accumulatedRate, uint256 _safetyPrice) = _getCData(_cType);
+
+    uint256 _percent = getSafetyRatio(_cType) + _percentageBuffer;
+    uint256 _multiplier = 1000 / (105 - (10_000 / (_percent))); // todo add more precision: 383
+
+    _cTypeLoanAmount = (_initCapital * _multiplier / 10) - _initCapital;
+    _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 10;
+  }
+
   /// @dev execute payload with delegate call via proxy for address(this)
   function _executeFromProxy(bytes memory _payload) internal {
     PS_ADAPTER_ODPROXY.execute(address(exitActions), _payload);
-  }
-
-  /// @dev transfer asset to this contract to use in flashloan-swap
-  function _deposit(address _account, address _asset, uint256 _amount) internal {
-    IERC20Metadata(_asset).transferFrom(_account, address(this), _amount);
-    _deposits[_account][_asset] = _amount;
-  }
-
-  /// @dev transfer asset to this owner
-  function _withdraw(address _account, address _asset, uint256 _amount) internal {
-    uint256 _balance = _deposits[_account][_asset];
-    if (_balance < _amount) revert InsufficientBalance();
-    _deposits[_account][_asset] = _balance - _amount;
-    IERC20Metadata(_asset).transferFrom(address(this), _account, _amount);
   }
 
   /// @dev takes ParaSwap transaction data and executes sell swap
@@ -240,28 +249,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     uint256 _amountAccepted = _minDstAmount - _minDstAmount.percentMul(MAX_SLIPPAGE_PERCENT);
     if (_amountReceived < _amountAccepted) revert UnderBuy();
     emit Swapped(address(_fromToken), address(_toToken), _amountSold, _amountReceived);
-  }
-
-  /// @dev get accumulated rate and safety price for a cType from the SAFEEngine
-  function _getCData(bytes32 _cType) internal view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
-    ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = ISAFEEngine(safeManager.safeEngine()).cData(_cType);
-    _accumulatedRate = _safeEngCData.accumulatedRate;
-    _safetyPrice = _safeEngCData.safetyPrice;
-  }
-
-  /// @dev calculate collateral loan amount and leveraged debt
-  function _getLeveragedDebt(
-    bytes32 _cType,
-    uint256 _initCapital,
-    uint256 _percentageBuffer
-  ) internal view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
-    (uint256 _accumulatedRate, uint256 _safetyPrice) = _getCData(_cType);
-
-    uint256 _percent = getSafetyRatio(_cType) + _percentageBuffer;
-    uint256 _multiplier = 1000 / (105 - (10_000 / (_percent)));
-
-    _cTypeLoanAmount = (_initCapital * _multiplier / 10) - _initCapital;
-    _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 10;
   }
 
   /// @notice overridden function from Modifiable to modify parameters
