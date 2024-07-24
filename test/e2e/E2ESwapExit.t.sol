@@ -82,65 +82,6 @@ contract E2ESwapExit is CommonTest {
     vm.stopPrank();
   }
 
-  /**
-   * @dev DO NOT Fuzz Test w/ ParaSwap SDK calls
-   */
-
-  /// @notice deposit 0.00001 Ether
-  function testRequestFlashloan0RETH() public {
-    _requestFlashLoanAndAssertValues(0.00001 ether, RETH);
-  }
-
-  function testRequestFlashloan0WSTETH() public {
-    _requestFlashLoanAndAssertValues(0.00001 ether, WSTETH);
-  }
-
-  /// @notice deposit 0.1 Ether
-  function testRequestFlashloan1RETH() public {
-    _requestFlashLoanAndAssertValues(0.1 ether, RETH);
-  }
-
-  function testRequestFlashloan1WSTETH() public {
-    _requestFlashLoanAndAssertValues(0.1 ether, WSTETH);
-  }
-
-  /// @notice deposit 2 Ether
-  function testRequestFlashloan2RETH() public {
-    _requestFlashLoanAndAssertValues(2 ether, RETH);
-  }
-
-  function testRequestFlashloan2WSTETH() public {
-    _requestFlashLoanAndAssertValues(2 ether, WSTETH);
-  }
-
-  /// @notice deposit 4 Ether
-  function testRequestFlashloan3RETH() public {
-    _requestFlashLoanAndAssertValues(4 ether, RETH);
-  }
-
-  function testRequestFlashloan3WSTETH() public {
-    _requestFlashLoanAndAssertValues(4 ether, WSTETH);
-  }
-
-  /// @notice deposit 8 Ether
-  function testRequestFlashloan4RETH() public {
-    _requestFlashLoanAndAssertValues(8 ether, RETH);
-  }
-
-  function testRequestFlashloan4WSTETH() public {
-    _requestFlashLoanAndAssertValues(8 ether, WSTETH);
-  }
-
-  /// @notice deposit 16 Ether
-  function testRequestFlashloan5RETH() public {
-    _requestFlashLoanAndAssertValues(16 ether, RETH);
-  }
-
-  function testRequestFlashloan5WSTETH() public {
-    _requestFlashLoanAndAssertValues(16 ether, WSTETH);
-  }
-
-  // todo test Arb, test each ctype per test
   function _requestFlashLoanAndAssertValues(uint256 _initCapital, bytes32 _cType) internal {
     assertEq(collateral[_cType].balanceOf(sellAdapterAddr), 0);
     assertEq(systemCoin.balanceOf(sellAdapterAddr), 0);
@@ -205,8 +146,14 @@ contract E2ESwapExit is CommonTest {
   function _logFinalValues(uint256 _deposit, bytes32 _cType) internal {
     (uint256 _c, uint256 _d) = _getSAFE(_cType, userNFV.safeHandler);
     emit log_named_bytes32('COLLATERAL      TYPE', _cType);
-    if (_cType == RETH) emit log_named_string('RETH   ORACLE  PRICE', _floatingPointWad(_readCTypePrice(RETH)));
-    if (_cType == WSTETH) emit log_named_string('WSTETH ORACLE  PRICE', _floatingPointWad(_readCTypePrice(WSTETH)));
+    if (_cType == RETH) {
+      emit log_named_string('RETH   ORACLE  PRICE', _floatingPointWad(_readCTypePrice(RETH)));
+    } else if (_cType == WSTETH) {
+      emit log_named_string('WSTETH ORACLE  PRICE', _floatingPointWad(_readCTypePrice(WSTETH)));
+    } else if (_cType == ARB) {
+      emit log_named_string('ARB    ORACLE  PRICE', _floatingPointWad(_readCTypePrice(ARB)));
+    }
+    emit log_named_string('SAFETYRATION PERCENT', string.concat(sellAdapter.getSafetyRatio(_cType).toString(), '%'));
     emit log_named_string('--------------------', '');
     emit log_named_string('ORIGINAL        DEBT', '0');
     emit log_named_string('FINAL           DEBT', _floatingPointWad(_d));
@@ -218,5 +165,83 @@ contract E2ESwapExit is CommonTest {
     uint256 divRes = _c * 100 / _deposit;
     emit log_named_string('MULTIPLIER      RATE', _floatingPointWad((divRes) * 1e16, 1e16));
     emit log_named_string('LEVERAGE  PERCENTAGE', string.concat((divRes - 100).toString(), '%'));
+  }
+}
+
+contract E2ESwapExitARB is E2ESwapExit {
+  function testRequestFlashloan0() public {
+    _requestFlashLoanAndAssertValues(0.00001 ether, ARB);
+  }
+
+  function testRequestFlashloan1() public {
+    _requestFlashLoanAndAssertValues(0.1 ether, ARB);
+  }
+
+  function testRequestFlashloan2() public {
+    _requestFlashLoanAndAssertValues(2 ether, ARB);
+  }
+
+  function testRequestFlashloan3() public {
+    _requestFlashLoanAndAssertValues(4 ether, ARB);
+  }
+
+  function testRequestFlashloan4() public {
+    _requestFlashLoanAndAssertValues(8 ether, ARB);
+  }
+
+  function testRequestFlashloan5() public {
+    _requestFlashLoanAndAssertValues(16 ether, ARB);
+  }
+}
+
+contract E2ESwapExitRETH is E2ESwapExit {
+  function testRequestFlashloan0() public {
+    _requestFlashLoanAndAssertValues(0.00001 ether, RETH);
+  }
+
+  function testRequestFlashloan1() public {
+    _requestFlashLoanAndAssertValues(0.1 ether, RETH);
+  }
+
+  function testRequestFlashloan2() public {
+    _requestFlashLoanAndAssertValues(2 ether, RETH);
+  }
+
+  function testRequestFlashloan3() public {
+    _requestFlashLoanAndAssertValues(4 ether, RETH);
+  }
+
+  function testRequestFlashloan4() public {
+    _requestFlashLoanAndAssertValues(8 ether, RETH);
+  }
+
+  function testRequestFlashloan5() public {
+    _requestFlashLoanAndAssertValues(16 ether, RETH);
+  }
+}
+
+contract E2ESwapExitWSTETH is E2ESwapExit {
+  function testRequestFlashloan0() public {
+    _requestFlashLoanAndAssertValues(0.00001 ether, WSTETH);
+  }
+
+  function testRequestFlashloan1() public {
+    _requestFlashLoanAndAssertValues(0.1 ether, WSTETH);
+  }
+
+  function testRequestFlashloan2() public {
+    _requestFlashLoanAndAssertValues(2 ether, WSTETH);
+  }
+
+  function testRequestFlashloan3() public {
+    _requestFlashLoanAndAssertValues(4 ether, WSTETH);
+  }
+
+  function testRequestFlashloan4() public {
+    _requestFlashLoanAndAssertValues(8 ether, WSTETH);
+  }
+
+  function testRequestFlashloan5() public {
+    _requestFlashLoanAndAssertValues(16 ether, WSTETH);
   }
 }
