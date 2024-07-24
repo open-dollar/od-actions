@@ -35,6 +35,9 @@ contract E2ESwapExit is CommonTest {
   IDenominatedOracle public wstethOracle;
   uint256 public wstethUsdPrice;
 
+  IDenominatedOracle public arbOracle;
+  uint256 public arbUsdPrice;
+
   function setUp() public virtual override {
     super.setUp();
     rethOracle = IDenominatedOracle(MAINNET_DENOMINATED_RETH_USD_ORACLE);
@@ -44,6 +47,10 @@ contract E2ESwapExit is CommonTest {
     wstethOracle = IDenominatedOracle(MAINNET_DENOMINATED_WSTETH_USD_ORACLE);
     (wstethUsdPrice,) = wstethOracle.getResultWithValidity();
     _setCTypePrice(WSTETH, wstethUsdPrice);
+
+    arbOracle = IDenominatedOracle(MAINNET_CHAINLINK_ARB_USD_RELAYER);
+    (arbUsdPrice,) = arbOracle.getResultWithValidity();
+    _setCTypePrice(ARB, arbUsdPrice);
 
     userProxy = _deployOrFind(USER);
     label(USER, 'USER-WALLET');
@@ -68,6 +75,7 @@ contract E2ESwapExit is CommonTest {
     label(sellAdapterProxy, 'SELL-ADAPTER-PROXY');
 
     vm.startPrank(sellAdapterAddr);
+    IERC20Metadata(ARB_ADDR).approve(sellAdapterProxy, type(uint256).max);
     IERC20Metadata(RETH_ADDR).approve(sellAdapterProxy, type(uint256).max);
     IERC20Metadata(WSTETH_ADDR).approve(sellAdapterProxy, type(uint256).max);
     IERC20Metadata(OD_ADDR).approve(sellAdapterProxy, type(uint256).max);
@@ -160,13 +168,14 @@ contract E2ESwapExit is CommonTest {
     uint256 _swapResult = _getDstAmountUserInput(OD_ADDR, _cTypeAddr, _leveragedDebt);
 
     uint256 _accumulator;
-    while (_loanAmount > _swapResult) {
+    while ((_loanAmount + PREMIUM) > _swapResult) {
       _accumulator += 3;
       (_loanAmount, _leveragedDebt) = sellAdapter.getLeveragedDebt(_cType, _initCapital, _accumulator);
 
       /// @notice ParaSwap SDK call: get dstAmount from route
       _swapResult = _getDstAmountUserInput(OD_ADDR, _cTypeAddr, _leveragedDebt);
     }
+    emit log_named_uint('LOOP          ROUNDS', _accumulator / 3);
 
     /// @notice ParaSwap SDK call: get transaction
     (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) =
@@ -179,7 +188,6 @@ contract E2ESwapExit is CommonTest {
     /// @notice USER deposits initialCollateral in sellAdapterProxy and executes flashloan leverage
     vm.startPrank(USER);
     IERC20Metadata(_cTypeAddr).approve(sellAdapterAddr, _initCapital);
-    // sellAdapter.deposit(_cTypeAddr, _initCapital);
     sellAdapter.requestFlashloan(_sellParams, _initCapital, _loanAmount, _dstAmount, vaults[userProxy], _cType);
     vm.stopPrank();
 
@@ -205,10 +213,10 @@ contract E2ESwapExit is CommonTest {
     emit log_named_string('--------------------', '');
     emit log_named_string('ORIGINAL  COLLATERAL', _floatingPointWad(_deposit));
     emit log_named_string('FINAL     COLLATERAL', _floatingPointWad(_c));
-    emit log_named_uint('REMAINING COLLATERAL', collateral[_cType].balanceOf(sellAdapterAddr));
+    emit log_named_string('REMAINING COLLATERAL', _floatingPointWad(collateral[_cType].balanceOf(sellAdapterAddr)));
     emit log_named_string('--------------------', '');
     uint256 divRes = _c * 100 / _deposit;
-    emit log_named_string('MULTIPLIER      RATE', _floatingPointWad((divRes / 10) * 1e17, 1e17));
+    emit log_named_string('MULTIPLIER      RATE', _floatingPointWad((divRes) * 1e16, 1e16));
     emit log_named_string('LEVERAGE  PERCENTAGE', string.concat((divRes - 100).toString(), '%'));
   }
 }

@@ -62,16 +62,6 @@ interface IParaswapSellAdapter is IModifiable {
 
   /**
    * @param _sellParams IParaswapSellAdapter.SellParams
-   * @param _minDstAmount for sell/swap
-   * @return _amountReceived amount of asset bought
-   */
-  function sellOnParaSwap(
-    SellParams memory _sellParams,
-    uint256 _minDstAmount
-  ) external returns (uint256 _amountReceived);
-
-  /**
-   * @param _sellParams IParaswapSellAdapter.SellParams
    * @param _minDstAmount accepted for sell/swap
    * @param _safeId OpenDollar NFV/CDP
    * @param _cType collateral type of OpenDollar NFV/CDP

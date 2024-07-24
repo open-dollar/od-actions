@@ -80,21 +80,6 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, _percentageBuffer);
   }
 
-  /// @dev exact-in sell swap on ParaSwap
-  function sellOnParaSwap(
-    SellParams memory _sellParams,
-    uint256 _minDstAmount
-  ) external returns (uint256 _amountReceived) {
-    _amountReceived = _sellOnParaSwap(
-      _sellParams.offset,
-      _sellParams.swapCalldata,
-      IERC20Metadata(_sellParams.fromToken),
-      IERC20Metadata(_sellParams.toToken),
-      _sellParams.sellAmount,
-      _minDstAmount
-    );
-  }
-
   /// @dev approve address(this) as safeHandler and request to borrow asset on Aave
   function requestFlashloan(
     SellParams memory _sellParams,
@@ -197,10 +182,10 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     (uint256 _accumulatedRate, uint256 _safetyPrice) = _getCData(_cType);
 
     uint256 _percent = getSafetyRatio(_cType) + _percentageBuffer;
-    uint256 _multiplier = 1000 / (105 - (10_000 / (_percent))); // todo add more precision: 383
+    uint256 _multiplier = 10_000 / (105 - (10_000 / (_percent)));
 
-    _cTypeLoanAmount = (_initCapital * _multiplier / 10) - _initCapital;
-    _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 10;
+    _cTypeLoanAmount = (_initCapital * _multiplier / 100) - _initCapital;
+    _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 100;
   }
 
   /// @dev execute payload with delegate call via proxy for address(this)
