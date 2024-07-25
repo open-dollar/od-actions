@@ -11,7 +11,9 @@
   </a>
 </p>
 
-Template for projects using `@opendollar/contracts` with Foundry
+Proxy action contracts for Open Dollar  
+
+[![codecov](https://codecov.io/gh/open-dollar/od-actions/graph/badge.svg?token=AeLWE37Ace)](https://codecov.io/gh/open-dollar/od-actions) 
 
 ## Documentation
 
