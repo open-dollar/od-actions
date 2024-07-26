@@ -10,7 +10,15 @@ contract BaseTest is Test {
   function _supplyAndDeposit(address _adapter, address _asset, uint256 _amount) internal {
     deal(_asset, msg.sender, _amount);
     IERC20Metadata(_asset).approve(address(_adapter), _amount);
-    IParaswapSellAdapter(_adapter).deposit(_asset, _amount);
+    IERC20Metadata(_asset).transferFrom(msg.sender, address(this), _amount);
+  }
+
+  function _getDstAmountUserInput(
+    address _fromToken,
+    address _toToken,
+    uint256 _amount
+  ) internal returns (uint256 _dstAmount) {
+    _dstAmount = uint256(bytes32(_getDstAmount(_fromToken, 18, _toToken, 18, _amount, USER)));
   }
 
   function _getSingleUserInput(
@@ -18,7 +26,7 @@ contract BaseTest is Test {
     address _toToken
   ) internal returns (IParaswapSellAdapter.SellParams memory _sellParams) {
     deal(_fromToken, USER, SELL_AMOUNT);
-    bytes memory _result = _getSwapRoute(_fromToken, 18, _toToken, 18, SELL_AMOUNT, USER);
+    bytes memory _result = _getSwapTransaction(_fromToken, 18, _toToken, 18, SELL_AMOUNT, USER);
     _sellParams = IParaswapSellAdapter.SellParams(0, _result, _fromToken, _toToken, SELL_AMOUNT);
   }
 
@@ -36,7 +44,7 @@ contract BaseTest is Test {
   ) internal returns (uint256 _dstAmount, IParaswapSellAdapter.SellParams memory _sellParams) {
     deal(_fromToken, USER, _amount);
     _dstAmount = uint256(bytes32(_getDstAmount(_fromToken, 18, _toToken, 18, _amount, USER)));
-    bytes memory _result = _getSwapRoute(_fromToken, 18, _toToken, 18, _amount, USER);
+    bytes memory _result = _getSwapTransaction(_fromToken, 18, _toToken, 18, _amount, USER);
     _sellParams = IParaswapSellAdapter.SellParams(0, _result, _fromToken, _toToken, _amount);
   }
 
@@ -61,7 +69,7 @@ contract BaseTest is Test {
     _result = vm.ffi(inputs);
   }
 
-  function _getSwapRoute(
+  function _getSwapTransaction(
     address _fromToken,
     uint256 _fromDecimals,
     address _toToken,
@@ -71,7 +79,7 @@ contract BaseTest is Test {
   ) internal returns (bytes memory _result) {
     string[] memory inputs = new string[](8);
     inputs[0] = 'node';
-    inputs[1] = './script/getSwapRoute.js';
+    inputs[1] = './script/getSwapTransaction.js';
     inputs[2] = vm.toString(_fromToken);
     inputs[3] = vm.toString(_fromDecimals);
     inputs[4] = vm.toString(_toToken);
@@ -82,11 +90,3 @@ contract BaseTest is Test {
     _result = vm.ffi(inputs);
   }
 }
-
-// function _borrow(address _adapter, address _asset, uint256 _amount) internal {
-//   _adapter.borrow(_asset, _amount, 2, 0, USER);
-// }
-
-// function _withdraw(address _adapter, address _asset, uint256 _amount) internal {
-//   _adapter.withdraw(_asset, _amount, USER);
-// }

@@ -1,121 +1,108 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import 'forge-std/Test.sol';
 import {IERC20Metadata} from '@openzeppelin/token/ERC20/extensions/IERC20Metadata.sol';
 import {FlashLoanSimpleReceiverBase} from '@aave-core-v3/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol';
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
-// import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
+import {PercentageMath} from '@aave-core-v3/contracts/protocol/libraries/math/PercentageMath.sol';
 import {IParaSwapAugustusRegistry} from '@aave-debt-swap/dependencies/paraswap/IParaSwapAugustusRegistry.sol';
 import {ODProxy} from '@opendollar/contracts/proxies/ODProxy.sol';
-import {IODSafeManager} from '@opendollar/interfaces/proxies/IODSafeManager.sol';
-import {ICollateralJoinFactory} from '@opendollar/interfaces/factories/ICollateralJoinFactory.sol';
-import {IVault721} from '@opendollar/interfaces/proxies/IVault721.sol';
-import {ISAFEEngine} from '@opendollar/interfaces/ISAFEEngine.sol';
-import {IParaswapSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
+import {Modifiable} from '@opendollar/contracts/utils/Modifiable.sol';
+import {Authorizable} from '@opendollar/contracts/utils/Authorizable.sol';
+import {
+  ISAFEEngine,
+  IODSafeManager,
+  ICollateralJoinFactory,
+  ICollateralJoin,
+  IOracleRelayer,
+  IVault721
+} from '@opendollar/libraries/OpenDollarV1Arbitrum.sol';
+import {Assertions} from '@opendollar/libraries/Assertions.sol';
+import {Encoding} from '@opendollar/libraries/Encoding.sol';
+import {Math} from '@opendollar/libraries/Math.sol';
+import {IParaswapSellAdapter, InitSellAdapter} from 'src/leverage/interfaces/IParaswapSellAdapter.sol';
 import {IParaswapAugustus} from 'src/leverage/interfaces/IParaswapAugustus.sol';
-import {ExitActions} from 'src/leverage/ExitActions.sol';
+import {IExitActions} from 'src/leverage/interfaces/IExitActions.sol';
 
-/**
- * TODO:
- * - add access control
- * - add modifiable contract for var updates
- * - add withdraw function
- * - enforce max slippage rate
- * - simplify the constructor with a struct
- * - remove Test inheritance
- */
-contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Test {
-  // using PercentageMath for uint256;
-  // uint256 public constant MAX_SLIPPAGE_PERCENT = 0.3e4; // 30.00%
-  uint256 public constant PREMIUM = 500_000_000_000;
+contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapter, Modifiable {
+  using PercentageMath for uint256;
+  using Math for uint256;
+  using Assertions for address;
+  using Encoding for bytes;
+
+  uint256 public constant MAX_SLIPPAGE_PERCENT = 0.03e4; // 3%
 
   IParaSwapAugustusRegistry public immutable AUGUSTUS_REGISTRY;
   ODProxy public immutable PS_ADAPTER_ODPROXY;
-  IERC20Metadata public immutable OPEN_DOLLAR;
 
   IParaswapAugustus public augustus;
 
   IODSafeManager public safeManager;
+  IOracleRelayer public oracleRelayer;
   ICollateralJoinFactory public collateralJoinFactory;
-  // todo make interface for this
-  ExitActions public exitActions;
+  IExitActions public exitActions;
   address public coinJoin;
 
-  mapping(address => mapping(address => uint256)) internal _deposits;
-
-  /**
-   * @param _augustusRegistry address of Paraswap AugustusRegistry
-   * @param _augustusSwapper address of Paraswap AugustusSwapper
-   * @param _poolProvider address of Aave PoolAddressProvider
-   * @param _vault721 address of OpenDollar Vault721
-   * @param _exitActions address of OpenDollar ExitActions
-   * @param _collateralJoinFactory address of OpenDollar CollateralJoinFactory
-   * @param _coinJoin address of OpenDollar CoinJoin
-   */
-  constructor(
-    address _systemCoin,
-    address _augustusRegistry,
-    address _augustusSwapper,
-    address _poolProvider,
-    address _vault721,
-    address _exitActions,
-    address _collateralJoinFactory,
-    address _coinJoin
-  ) FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_poolProvider)) {
-    OPEN_DOLLAR = IERC20Metadata(_systemCoin);
-    AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_augustusRegistry);
-    augustus = IParaswapAugustus(_augustusSwapper);
-    IVault721 _v721 = IVault721(_vault721);
+  constructor(InitSellAdapter memory _initSellAdapter)
+    FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_initSellAdapter.poolProvider))
+    Authorizable(msg.sender)
+  {
+    AUGUSTUS_REGISTRY = IParaSwapAugustusRegistry(_initSellAdapter.augustusRegistry);
+    augustus = IParaswapAugustus(_initSellAdapter.augustusSwapper);
+    IVault721 _v721 = IVault721(_initSellAdapter.vault721);
     safeManager = IODSafeManager(_v721.safeManager());
-    exitActions = ExitActions(_exitActions);
-    collateralJoinFactory = ICollateralJoinFactory(_collateralJoinFactory);
-    coinJoin = _coinJoin;
+    oracleRelayer = IOracleRelayer(_initSellAdapter.oracleRelayer);
+    exitActions = IExitActions(_initSellAdapter.exitActions);
+    collateralJoinFactory = ICollateralJoinFactory(_initSellAdapter.collateralJoinFactory);
+    coinJoin = _initSellAdapter.coinJoin;
     PS_ADAPTER_ODPROXY = ODProxy(_v721.build(address(this)));
   }
 
-  /// @dev deposit asset for msg.sender
-  function deposit(address _asset, uint256 _amount) external {
-    _deposit(msg.sender, _asset, _amount);
+  /// @dev get accumulated rate and safety price for a cType
+  function getCData(bytes32 _cType) external view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
+    (_accumulatedRate, _safetyPrice) = _getCData(_cType);
   }
 
-  /// @dev deposit asset for account
-  function deposit(address _onBehalfOf, address _asset, uint256 _amount) external {
-    _deposit(_onBehalfOf, _asset, _amount);
+  /// @dev get max collateral loan and max leveraged debt
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital
+  ) external view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+    (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, 0);
   }
 
-  /// @dev exact-in sell swap on ParaSwap
-  function sellOnParaSwap(
-    SellParams memory _sellParams,
-    uint256 _minDstAmount
-  ) external returns (uint256 _amountReceived) {
-    _amountReceived = _sellOnParaSwap(
-      _sellParams.offset,
-      _sellParams.swapCalldata,
-      IERC20Metadata(_sellParams.fromToken),
-      IERC20Metadata(_sellParams.toToken),
-      _sellParams.sellAmount,
-      _minDstAmount
-    );
+  /// @dev get collateral loan and leveraged debt with percentage buffer
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital,
+    uint256 _percentageBuffer
+  ) external view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+    (_cTypeLoanAmount, _leveragedDebt) = _getLeveragedDebt(_cType, _initCapital, _percentageBuffer);
   }
 
   /// @dev approve address(this) as safeHandler and request to borrow asset on Aave
   function requestFlashloan(
     SellParams memory _sellParams,
+    uint256 _initCollateral,
     uint256 _collateralLoan,
     uint256 _minDstAmount,
     uint256 _safeId,
     bytes32 _cType
   ) external {
+    address _collateralJoin = collateralJoinFactory.collateralJoins(_cType);
+
+    // transfer initial collateral deposit
+    ICollateralJoin(_collateralJoin).collateral().transferFrom(msg.sender, address(this), _initCollateral);
+
     // deposit collateral, generate debt
     bytes memory _payload = abi.encodeWithSelector(
       exitActions.lockTokenCollateralAndGenerateDebtToAccount.selector,
       address(this),
       address(safeManager),
-      address(collateralJoinFactory.collateralJoins(_cType)),
+      _collateralJoin,
       coinJoin,
       _safeId,
-      _collateralLoan - PREMIUM,
+      _initCollateral + _collateralLoan,
       _sellParams.sellAmount
     );
 
@@ -124,7 +111,7 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       receiverAddress: address(this),
       asset: address(_sellParams.toToken),
       amount: _collateralLoan,
-      params: abi.encode(_minDstAmount, _sellParams, _payload),
+      params: abi.encode(_minDstAmount, _safeId, _collateralJoin, _sellParams, _payload),
       referralCode: uint16(block.number)
     });
   }
@@ -134,47 +121,76 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
     address asset,
     uint256 amount,
     uint256 premium,
-    address initiator,
+    address, /* initiator */
     bytes calldata params
   ) external override returns (bool) {
-    (uint256 _minDstAmount, SellParams memory _sellParams, bytes memory _payload) =
-      abi.decode(params, (uint256, SellParams, bytes));
+    (
+      uint256 _minDstAmount,
+      uint256 _safeId,
+      address _collateralJoin,
+      SellParams memory _sellParams,
+      bytes memory _payload
+    ) = abi.decode(params, (uint256, uint256, address, SellParams, bytes));
 
-    emit log_named_uint('RETH BAL AQUIRE LOAN', IERC20Metadata(_sellParams.toToken).balanceOf(address(this)));
+    if (asset != _sellParams.toToken) revert WrongAsset();
+    IERC20Metadata _toToken = IERC20Metadata(_sellParams.toToken);
+    IERC20Metadata _fromToken = IERC20Metadata(_sellParams.fromToken);
 
-    uint256 _beforebalance = IERC20Metadata(_sellParams.fromToken).balanceOf(address(this));
-    uint256 _sellAmount = _sellParams.sellAmount;
+    {
+      uint256 _beforebalance = _fromToken.balanceOf(address(this));
+      uint256 _sellAmount = _sellParams.sellAmount;
 
-    _executeFromProxy(_payload);
+      _executeFromProxy(_payload);
 
-    // todo add error msg
-    // if (_sellAmount != OD.balanceOf(address(this)) - _beforebalance) revert();
-
-    // swap debt to collateral
-    _sellOnParaSwap(
-      _sellParams.offset,
-      _sellParams.swapCalldata,
-      IERC20Metadata(_sellParams.fromToken),
-      IERC20Metadata(_sellParams.toToken),
-      _sellAmount,
-      _minDstAmount
-    );
-    emit log_named_uint('RETH BAL POST   SWAP', IERC20Metadata(_sellParams.toToken).balanceOf(address(this)));
+      if (_sellAmount != _fromToken.balanceOf(address(this)) - _beforebalance) revert IncorrectAmount();
+      // swap debt to collateral
+      _sellOnParaSwap(_sellParams.offset, _sellParams.swapCalldata, _fromToken, _toToken, _sellAmount, _minDstAmount);
+    }
 
     uint256 _payBack = amount + premium;
+    uint256 _remainder = _toToken.balanceOf(address(this)) - _payBack;
+    if (_remainder > 0) {
+      bytes memory _returnPayload = abi.encodeWithSelector(
+        exitActions.lockTokenCollateral.selector, address(safeManager), _collateralJoin, _safeId, _remainder
+      );
+      _executeFromProxy(_returnPayload);
+    }
+
     IERC20Metadata(asset).approve(address(POOL), _payBack);
     return true;
+  }
+
+  /// @dev get safetyRatio as fixed-point percent
+  function getSafetyRatio(bytes32 _cType) public view returns (uint256 _safetyCRatio) {
+    IOracleRelayer.OracleRelayerCollateralParams memory _cParams = oracleRelayer.cParams(_cType);
+    _safetyCRatio = _cParams.safetyCRatio / 1e25;
+  }
+
+  /// @dev get accumulated rate and safety price for a cType from the SAFEEngine
+  function _getCData(bytes32 _cType) internal view returns (uint256 _accumulatedRate, uint256 _safetyPrice) {
+    ISAFEEngine.SAFEEngineCollateralData memory _safeEngCData = ISAFEEngine(safeManager.safeEngine()).cData(_cType);
+    _accumulatedRate = _safeEngCData.accumulatedRate;
+    _safetyPrice = _safeEngCData.safetyPrice;
+  }
+
+  /// @dev calculate collateral loan amount and leveraged debt
+  function _getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital,
+    uint256 _percentageBuffer
+  ) internal view returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt) {
+    (uint256 _accumulatedRate, uint256 _safetyPrice) = _getCData(_cType);
+
+    uint256 _percent = getSafetyRatio(_cType) + _percentageBuffer;
+    uint256 _multiplier = 10_000 / (105 - (10_000 / (_percent)));
+
+    _cTypeLoanAmount = (_initCapital * _multiplier / 100) - _initCapital;
+    _leveragedDebt = _initCapital.wmul(_safetyPrice).wdiv(_accumulatedRate) * _multiplier / 100;
   }
 
   /// @dev execute payload with delegate call via proxy for address(this)
   function _executeFromProxy(bytes memory _payload) internal {
     PS_ADAPTER_ODPROXY.execute(address(exitActions), _payload);
-  }
-
-  /// @dev transfer asset to this contract to use in flashloan-swap
-  function _deposit(address _account, address _asset, uint256 _amount) internal {
-    IERC20Metadata(_asset).transferFrom(_account, address(this), _amount);
-    _deposits[_account][_asset] = _amount;
   }
 
   /// @dev takes ParaSwap transaction data and executes sell swap
@@ -212,10 +228,32 @@ contract ParaswapSellAdapter is FlashLoanSimpleReceiverBase, IParaswapSellAdapte
       }
     }
     uint256 _amountSold = _initBalFromToken - _fromToken.balanceOf(address(this));
-    if (_sellAmount > _amountSold) revert OverSell();
+    if (_sellAmount < _amountSold) revert OverSell();
 
     _amountReceived = _toToken.balanceOf(address(this)) - _initBalToToken;
-    if (_amountReceived < _minDstAmount) revert UnderBuy();
+    uint256 _amountAccepted = _minDstAmount - _minDstAmount.percentMul(MAX_SLIPPAGE_PERCENT);
+    if (_amountReceived < _amountAccepted) revert UnderBuy();
     emit Swapped(address(_fromToken), address(_toToken), _amountSold, _amountReceived);
+  }
+
+  /// @notice overridden function from Modifiable to modify parameters
+  function _modifyParameters(bytes32 _param, bytes memory _data) internal override {
+    address _addr = _data.toAddress();
+
+    if (_param == 'augustus') {
+      augustus = IParaswapAugustus(_addr.assertNonNull());
+    } else if (_param == 'safeManager') {
+      safeManager = IODSafeManager(_addr.assertNonNull());
+    } else if (_param == 'oracleRelayer') {
+      oracleRelayer = IOracleRelayer(_addr.assertNonNull());
+    } else if (_param == 'collateralJoinFactory') {
+      collateralJoinFactory = ICollateralJoinFactory(_addr.assertNonNull());
+    } else if (_param == 'exitActions') {
+      exitActions = IExitActions(_addr.assertNonNull());
+    } else if (_param == 'coinJoin') {
+      coinJoin = _addr.assertNonNull();
+    } else {
+      revert UnrecognizedParam();
+    }
   }
 }

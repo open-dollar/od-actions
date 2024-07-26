@@ -3,8 +3,30 @@ pragma solidity 0.8.20;
 
 import {IPoolAddressesProvider} from '@aave-core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPool} from '@aave-core-v3/contracts/interfaces/IPool.sol';
+import {IModifiable} from '@opendollar/interfaces/utils/IModifiable.sol';
 
-interface IParaswapSellAdapter {
+/**
+ * _augustusRegistry address of Paraswap AugustusRegistry
+ * _augustusSwapper address of Paraswap AugustusSwapper
+ * _poolProvider address of Aave PoolAddressProvider
+ * _vault721 address of OpenDollar Vault721
+ * _oracleRelayer address of OpenDollar OracleRelayer
+ * _exitActions address of OpenDollar ExitActions
+ * _collateralJoinFactory address of OpenDollar CollateralJoinFactory
+ * _coinJoin address of OpenDollar CoinJoin
+ */
+struct InitSellAdapter {
+  address augustusRegistry;
+  address augustusSwapper;
+  address poolProvider;
+  address vault721;
+  address oracleRelayer;
+  address exitActions;
+  address collateralJoinFactory;
+  address coinJoin;
+}
+
+interface IParaswapSellAdapter is IModifiable {
   /**
    * @dev emitted after a sell of an asset is made
    * @param _fromAsset address of the asset sold
@@ -16,10 +38,12 @@ interface IParaswapSellAdapter {
 
   error InvalidAugustus();
   error InsufficientBalance();
+  error IncorrectAmount();
   error OffsetOutOfRange();
   error OverSell();
   error UnderBuy();
   error ZeroValue();
+  error WrongAsset();
 
   /**
    * @param _offset offset of fromAmount in Augustus calldata if it should be overwritten, otherwise 0
@@ -38,22 +62,13 @@ interface IParaswapSellAdapter {
 
   /**
    * @param _sellParams IParaswapSellAdapter.SellParams
-   * @param _minDstAmount for sell/swap
-   * @return _amountReceived amount of asset bought
-   */
-  function sellOnParaSwap(
-    SellParams memory _sellParams,
-    uint256 _minDstAmount
-  ) external returns (uint256 _amountReceived);
-
-  /**
-   * @param _sellParams IParaswapSellAdapter.SellParams
    * @param _minDstAmount accepted for sell/swap
    * @param _safeId OpenDollar NFV/CDP
    * @param _cType collateral type of OpenDollar NFV/CDP
    */
   function requestFlashloan(
     SellParams memory _sellParams,
+    uint256 _initCollateral,
     uint256 _collateralLoan,
     uint256 _minDstAmount,
     uint256 _safeId,
@@ -61,15 +76,32 @@ interface IParaswapSellAdapter {
   ) external;
 
   /**
-   * @param _asset token
-   * @param _amount to deposit
+   * @param _cType collateral type of OpenDollar NFV/CDP
    */
-  function deposit(address _asset, uint256 _amount) external;
+  function getCData(bytes32 _cType) external view returns (uint256 _accumulatedRate, uint256 _safetyPrice);
 
   /**
-   * @param _onBehalfOf account to receive balance
-   * @param _asset token
-   * @param _amount to deposit
+   * @param _cType collateral type of OpenDollar NFV/CDP
    */
-  function deposit(address _onBehalfOf, address _asset, uint256 _amount) external;
+  function getSafetyRatio(bytes32 _cType) external returns (uint256 _safetyCRatio);
+
+  /**
+   * @param _cType collateral type of OpenDollar NFV/CDP
+   * @param _initCapital initial collateral deposit
+   */
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital
+  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt);
+
+  /**
+   * @param _cType collateral type of OpenDollar NFV/CDP
+   * @param _initCapital initial collateral deposit
+   * @param _percentageBuffer percentage above cType safetyRatio
+   */
+  function getLeveragedDebt(
+    bytes32 _cType,
+    uint256 _initCapital,
+    uint256 _percentageBuffer
+  ) external returns (uint256 _cTypeLoanAmount, uint256 _leveragedDebt);
 }

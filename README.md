@@ -20,3 +20,17 @@ Proxy action contracts for Open Dollar
 - https://book.getfoundry.sh/
 - https://contracts.opendollar.com
 - https://docs.opendollar.com
+
+## ParaswapSellAdapter Docs
+
+### get max loan and leveraged amount of debt:
+
+IParaswapSellAdapter.getLeveragedDebt(bytes32 _cType, uint256 _initCapital)
+
+### get loan and leveraged amount of debt with percentage buffer:
+
+IParaswapSellAdapter.getLeveragedDebt(bytes32 _cType, uint256 _initCapital, uint256 _percentageBuffer)
+
+### execute leverage flashloan
+
+IParaswapSellAdapter.requestFlashloan(SellParams memory _sellParams, uint256 _initCollateral, uint256 _collateralLoan, uint256 _minDstAmount, uint256 _safeId, bytes32 _cType)

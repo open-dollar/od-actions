@@ -12,7 +12,7 @@ const TO_DECIMALS = args[3];
 const SELL_AMOUNT = args[4];
 const CALLER = args[5];
 
-async function getSwapRoute(_fromToken, _fromDecimals, _toToken, _toDecimals, _sellAmount, _caller) {
+async function getSwapTransaction(_fromToken, _fromDecimals, _toToken, _toDecimals, _sellAmount, _caller) {
 	const priceRoute = await paraSwapMin.swap.getRate({
 		srcToken: _fromToken,
 		srcDecimals: _fromDecimals,
@@ -38,4 +38,4 @@ async function getSwapRoute(_fromToken, _fromDecimals, _toToken, _toDecimals, _s
 	process.stdout.write(txParams.data);
 }
 
-getSwapRoute(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, SELL_AMOUNT, CALLER);
+getSwapTransaction(FROM_TOKEN, FROM_DECIMALS, TO_TOKEN, TO_DECIMALS, SELL_AMOUNT, CALLER);
